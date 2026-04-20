@@ -1,0 +1,20 @@
+/* theme.css — estética */
+/* O ÚNICO arquivo a editar para mudar a aparência visual */
+
+:root {
+  --color-bg: #F5F3EE;
+  --color-surface: #EDEAE3;
+  --color-text: #1A1A18;
+  --color-text-muted: #6B6860;
+  --color-border: #D4D0C8;
+  --color-accent: #2B7FBF;
+  --color-alert: #BF4040;
+
+  --font-base: 'DM Sans', sans-serif;
+  --font-mono: 'DM Mono', monospace;
+
+  --radius-card: 6px;
+  --radius-block: 4px;
+
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
