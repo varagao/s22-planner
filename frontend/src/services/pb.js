@@ -76,3 +76,10 @@ export const deleteTimeBlock = (id) =>
 
 export const fetchMembers = () =>
   pb.collection('users').getFullList({ sort: 'name', filter: 'role != "viewer"' })
+
+// ── Utilitários ───────────────────────────────────────────────────────────────
+
+export const hasTimeBlocks = (taskId) =>
+  pb.collection('time_block')
+    .getList(1, 1, { filter: `task="${taskId}"` })
+    .then(r => r.totalItems > 0)
