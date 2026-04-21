@@ -17,11 +17,13 @@ migrate(
     let hasRole = false
     try { users.fields.getByName("role"); hasRole = true } catch (_) {}
     if (!hasRole) {
+      // PocketBase v0.22+: propriedades no nível raiz, sem "options"
       users.fields.add({
-        name:     "role",
-        type:     "select",
-        required: true,
-        options:  { maxSelect: 1, values: ["admin", "member", "viewer"] },
+        name:      "role",
+        type:      "select",
+        required:  true,
+        maxSelect: 1,
+        values:    ["admin", "member", "viewer"],
       })
       app.save(users)
     }
@@ -50,9 +52,11 @@ migrate(
       type: "base",
       fields: [
         { name: "name",         type: "text",     required: true },
-        { name: "status",       type: "select",   required: true, options: { maxSelect: 1, values: ["active", "paused", "done"] } },
         { name: "viewer_token", type: "text",     required: false },
-        { name: "client",       type: "relation", required: true, options: { collectionId: clientId, maxSelect: 1, cascadeDelete: false } },
+        { name: "status",       type: "select",   required: true,
+          maxSelect: 1, values: ["active", "paused", "done"] },
+        { name: "client",       type: "relation", required: true,
+          collectionId: clientId, maxSelect: 1, cascadeDelete: false },
       ],
       listRule:   "@request.auth.id != '' || (viewer_token != '' && viewer_token = @request.query.token)",
       viewRule:   "@request.auth.id != '' || (viewer_token != '' && viewer_token = @request.query.token)",
@@ -69,11 +73,14 @@ migrate(
       type: "base",
       fields: [
         { name: "name",            type: "text",     required: true },
-        { name: "status",          type: "select",   required: true, options: { maxSelect: 1, values: ["todo", "doing", "done"] } },
-        { name: "estimated_hours", type: "number",   required: false, options: { min: 0 } },
+        { name: "estimated_hours", type: "number",   required: false, min: 0 },
         { name: "due_date",        type: "date",     required: false },
-        { name: "project",         type: "relation", required: true,  options: { collectionId: projectId, maxSelect: 1, cascadeDelete: false } },
-        { name: "assignee",        type: "relation", required: false, options: { collectionId: usersId,   maxSelect: 1, cascadeDelete: false } },
+        { name: "status",          type: "select",   required: true,
+          maxSelect: 1, values: ["todo", "doing", "done"] },
+        { name: "project",         type: "relation", required: true,
+          collectionId: projectId, maxSelect: 1, cascadeDelete: false },
+        { name: "assignee",        type: "relation", required: false,
+          collectionId: usersId,   maxSelect: 1, cascadeDelete: false },
       ],
       listRule:   "@request.auth.id != '' || (project.viewer_token != '' && project.viewer_token = @request.query.token)",
       viewRule:   "@request.auth.id != '' || (project.viewer_token != '' && project.viewer_token = @request.query.token)",
@@ -89,11 +96,14 @@ migrate(
       name: "time_block",
       type: "base",
       fields: [
-        { name: "day_of_week", type: "select",   required: true, options: { maxSelect: 1, values: ["mon", "tue", "wed", "thu", "fri"] } },
-        { name: "hours",       type: "number",   required: true, options: { min: 0.5, max: 8 } },
         { name: "week_ref",    type: "text",     required: true },
-        { name: "task",        type: "relation", required: true, options: { collectionId: taskId,  maxSelect: 1, cascadeDelete: false } },
-        { name: "person",      type: "relation", required: true, options: { collectionId: usersId, maxSelect: 1, cascadeDelete: false } },
+        { name: "hours",       type: "number",   required: true, min: 0.5, max: 8 },
+        { name: "day_of_week", type: "select",   required: true,
+          maxSelect: 1, values: ["mon", "tue", "wed", "thu", "fri"] },
+        { name: "task",        type: "relation", required: true,
+          collectionId: taskId,  maxSelect: 1, cascadeDelete: false },
+        { name: "person",      type: "relation", required: true,
+          collectionId: usersId, maxSelect: 1, cascadeDelete: false },
       ],
       listRule:   "@request.auth.id != ''",
       viewRule:   "@request.auth.id != ''",
@@ -104,6 +114,5 @@ migrate(
 
   },
 
-  // ── down: não faz nada — irreversível sem dados de referência ─────────────
   (_app) => {}
 )
