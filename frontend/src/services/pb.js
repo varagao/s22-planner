@@ -84,10 +84,22 @@ export const updateTimeBlock = (id, data) =>
 export const deleteTimeBlock = (id) =>
   pb.collection('time_block').delete(id)
 
-// ── Users (members) ──────────────────────────────────────────────────────────
+// ── Users ─────────────────────────────────────────────────────────────────────
 
 export const fetchMembers = () =>
   pb.collection('users').getFullList({ sort: 'name', filter: 'role != "viewer"' })
+
+export const fetchUsers = () =>
+  pb.collection('users').getFullList({ sort: 'name' })
+
+export const createUser = (data) =>
+  pb.collection('users').create(data)
+
+export const updateUser = (id, data) =>
+  pb.collection('users').update(id, data)
+
+export const deleteUser = (id) =>
+  pb.collection('users').delete(id)
 
 // ── Utilitários ───────────────────────────────────────────────────────────────
 
