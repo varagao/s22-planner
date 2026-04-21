@@ -41,10 +41,22 @@ export const updateProject = (id, data) =>
 export const fetchProjectByToken = (token) =>
   pb.collection('project').getFirstListItem(`viewer_token="${token}"`, { expand: 'client' })
 
+export const generateViewerToken = (id) =>
+  pb.collection('project').update(id, { viewer_token: crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '') })
+
+export const revokeViewerToken = (id) =>
+  pb.collection('project').update(id, { viewer_token: '' })
+
 // ── Task ─────────────────────────────────────────────────────────────────────
 
 export const fetchTasks = (filter = '') =>
   pb.collection('task').getFullList({ sort: 'name', expand: 'project,assignee', filter })
+
+export const fetchTasksByProject = (projectId) =>
+  pb.collection('task').getFullList({
+    filter: `project="${projectId}" && status != "todo"`,
+    sort: 'due_date',
+  })
 
 export const createTask = (data) =>
   pb.collection('task').create(data)
