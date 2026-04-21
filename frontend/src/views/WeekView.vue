@@ -1,10 +1,11 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore } from '../stores/useAuthStore'
 import { useWeekRef } from '../composables/useWeekRef'
 import { useWeekStore } from '../stores/useWeekStore'
 import { useTaskStore } from '../stores/useTaskStore'
 import { useClientStore } from '../stores/useClientStore'
+import { fetchMembers } from '../services/pb'
 import WeekSidebar from '../components/week/WeekSidebar.vue'
 import DayColumn from '../components/week/DayColumn.vue'
 import BlockEditModal from '../components/week/BlockEditModal.vue'
@@ -16,27 +17,49 @@ const weekStore   = useWeekStore()
 const taskStore   = useTaskStore()
 const clientStore = useClientStore()
 
+const members      = ref([])
 const editingBlock = ref(null)
 
+// Admin começa sem filtro (vê todos); member começa filtrado para si
+const selectedPerson = ref(auth.isAdmin ? '' : auth.user?.id ?? '')
+
 onMounted(async () => {
-  await Promise.all([
+  const [, , , m] = await Promise.all([
     taskStore.load(),
     clientStore.load(),
     weekStore.load(weekRef.value),
+    fetchMembers(),
   ])
+  members.value = m
 })
 
 watch(weekRef, (val) => weekStore.load(val))
 
+// Blocos filtrados por pessoa selecionada
+function blocksForDay(dayKey) {
+  const all = weekStore.blocksForDay(dayKey)
+  if (!selectedPerson.value) return all
+  return all.filter(b => b.person === selectedPerson.value)
+}
+
+function hoursForDay(dayKey) {
+  return blocksForDay(dayKey).reduce((sum, b) => sum + (b.hours || 0), 0)
+}
+
+// Tarefas da sidebar: member vê só as suas, admin vê todas
+const sidebarTasks = computed(() => {
+  if (auth.isAdmin) return taskStore.tasks
+  return taskStore.tasks.filter(t => !t.assignee || t.assignee === auth.user?.id)
+})
+
 async function onDrop({ taskId, dayKey }) {
   await weekStore.addBlock({
     task: taskId,
-    person: auth.user?.id ?? null,
+    person: selectedPerson.value || auth.user?.id || null,
     day_of_week: dayKey,
     hours: 1,
     week_ref: weekRef.value,
   })
-  // Recarrega para obter o expand completo (task → project → client)
   await weekStore.load(weekRef.value)
 }
 
@@ -63,11 +86,21 @@ async function onBlockRemove(id) {
       <span class="week-label">{{ weekLabel }}</span>
       <button class="nav-btn" @click="goNext">›</button>
       <button v-if="!isCurrentWeek" class="today-btn" @click="goToday">Hoje</button>
+
+      <div class="nav-spacer" />
+
+      <!-- Filtro por pessoa — só admin vê o select completo -->
+      <select v-if="auth.isAdmin" v-model="selectedPerson" class="person-filter">
+        <option value="">Todas as pessoas</option>
+        <option v-for="m in members" :key="m.id" :value="m.id">
+          {{ m.name || m.email }}
+        </option>
+      </select>
     </div>
 
     <div class="week-body">
       <WeekSidebar
-        :tasks="taskStore.tasks"
+        :tasks="sidebarTasks"
         :clients="clientStore.clients"
       />
 
@@ -76,8 +109,8 @@ async function onBlockRemove(id) {
           v-for="day in days"
           :key="day.key"
           :day="day"
-          :blocks="weekStore.blocksForDay(day.key)"
-          :hours="weekStore.hoursForDay(day.key)"
+          :blocks="blocksForDay(day.key)"
+          :hours="hoursForDay(day.key)"
           @block-click="onBlockClick"
           @drop="onDrop"
         />
@@ -151,6 +184,26 @@ async function onBlockRemove(id) {
 
 .today-btn:hover {
   background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.nav-spacer {
+  flex: 1;
+}
+
+.person-filter {
+  padding: 5px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-block);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-base);
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.person-filter:focus {
+  border-color: var(--color-accent);
 }
 
 .week-body {
