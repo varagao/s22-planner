@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useAuthStore } from '../stores/useAuthStore'
+import { useBreakpoint } from '../composables/useBreakpoint'
 import { useWeekRef } from '../composables/useWeekRef'
 import { useWeekStore } from '../stores/useWeekStore'
 import { useTaskStore } from '../stores/useTaskStore'
@@ -9,18 +10,18 @@ import { fetchMembers } from '../services/pb'
 import WeekSidebar from '../components/week/WeekSidebar.vue'
 import DayColumn from '../components/week/DayColumn.vue'
 import BlockEditModal from '../components/week/BlockEditModal.vue'
+import MobileDayView from '../components/week/MobileDayView.vue'
 
 const auth = useAuthStore()
+const { isMobile } = useBreakpoint()
 const { weekRef, days, weekLabel, isCurrentWeek, goNext, goPrev, goToday } = useWeekRef()
 
 const weekStore   = useWeekStore()
 const taskStore   = useTaskStore()
 const clientStore = useClientStore()
 
-const members      = ref([])
-const editingBlock = ref(null)
-
-// Admin começa sem filtro (vê todos); member começa filtrado para si
+const members       = ref([])
+const editingBlock  = ref(null)
 const selectedPerson = ref(auth.isAdmin ? '' : auth.user?.id ?? '')
 
 onMounted(async () => {
@@ -35,7 +36,6 @@ onMounted(async () => {
 
 watch(weekRef, (val) => weekStore.load(val))
 
-// Blocos filtrados por pessoa selecionada
 function blocksForDay(dayKey) {
   const all = weekStore.blocksForDay(dayKey)
   if (!selectedPerson.value) return all
@@ -46,7 +46,6 @@ function hoursForDay(dayKey) {
   return blocksForDay(dayKey).reduce((sum, b) => sum + (b.hours || 0), 0)
 }
 
-// Tarefas da sidebar: member vê só as suas, admin vê todas
 const sidebarTasks = computed(() => {
   if (auth.isAdmin) return taskStore.tasks
   return taskStore.tasks.filter(t => !t.assignee || t.assignee === auth.user?.id)
@@ -56,6 +55,17 @@ async function onDrop({ taskId, dayKey }) {
   await weekStore.addBlock({
     task: taskId,
     person: selectedPerson.value || auth.user?.id || null,
+    day_of_week: dayKey,
+    hours: 1,
+    week_ref: weekRef.value,
+  })
+  await weekStore.load(weekRef.value)
+}
+
+async function onAlloc({ taskId, dayKey }) {
+  await weekStore.addBlock({
+    task: taskId,
+    person: auth.user?.id || null,
     day_of_week: dayKey,
     hours: 1,
     week_ref: weekRef.value,
@@ -81,49 +91,71 @@ async function onBlockRemove(id) {
 
 <template>
   <div class="week-view">
-    <div class="week-nav">
-      <button class="nav-btn" @click="goPrev">‹</button>
-      <span class="week-label">{{ weekLabel }}</span>
-      <button class="nav-btn" @click="goNext">›</button>
-      <button v-if="!isCurrentWeek" class="today-btn" @click="goToday">Hoje</button>
 
-      <div class="nav-spacer" />
+    <!-- ── Mobile ─────────────────────────────────────────────────────────── -->
+    <template v-if="isMobile">
+      <!-- Nav de semana compacto -->
+      <div class="week-nav week-nav--mobile">
+        <button class="nav-btn" @click="goPrev">‹ sem</button>
+        <span class="week-label">{{ weekLabel }}</span>
+        <button class="nav-btn" @click="goNext">sem ›</button>
+      </div>
 
-      <!-- Filtro por pessoa — só admin vê o select completo -->
-      <select v-if="auth.isAdmin" v-model="selectedPerson" class="person-filter">
-        <option value="">Todas as pessoas</option>
-        <option v-for="m in members" :key="m.id" :value="m.id">
-          {{ m.name || m.email }}
-        </option>
-      </select>
-    </div>
-
-    <div class="week-body">
-      <WeekSidebar
+      <MobileDayView
+        :days="days"
         :tasks="sidebarTasks"
         :clients="clientStore.clients"
+        :blocks-for-day="blocksForDay"
+        :hours-for-day="hoursForDay"
+        @alloc="onAlloc"
+        @block-save="onBlockSave"
+        @block-remove="onBlockRemove"
       />
+    </template>
 
-      <div class="week-grid">
-        <DayColumn
-          v-for="day in days"
-          :key="day.key"
-          :day="day"
-          :blocks="blocksForDay(day.key)"
-          :hours="hoursForDay(day.key)"
-          @block-click="onBlockClick"
-          @drop="onDrop"
-        />
+    <!-- ── Desktop ────────────────────────────────────────────────────────── -->
+    <template v-else>
+      <div class="week-nav">
+        <button class="nav-btn" @click="goPrev">‹</button>
+        <span class="week-label">{{ weekLabel }}</span>
+        <button class="nav-btn" @click="goNext">›</button>
+        <button v-if="!isCurrentWeek" class="today-btn" @click="goToday">Hoje</button>
+
+        <div class="nav-spacer" />
+
+        <select v-if="auth.isAdmin" v-model="selectedPerson" class="person-filter">
+          <option value="">Todas as pessoas</option>
+          <option v-for="m in members" :key="m.id" :value="m.id">
+            {{ m.name || m.email }}
+          </option>
+        </select>
       </div>
-    </div>
 
-    <BlockEditModal
-      v-if="editingBlock"
-      :block="editingBlock"
-      @save="onBlockSave"
-      @remove="onBlockRemove"
-      @close="editingBlock = null"
-    />
+      <div class="week-body">
+        <WeekSidebar :tasks="sidebarTasks" :clients="clientStore.clients" />
+
+        <div class="week-grid">
+          <DayColumn
+            v-for="day in days"
+            :key="day.key"
+            :day="day"
+            :blocks="blocksForDay(day.key)"
+            :hours="hoursForDay(day.key)"
+            @block-click="onBlockClick"
+            @drop="onDrop"
+          />
+        </div>
+      </div>
+
+      <BlockEditModal
+        v-if="editingBlock"
+        :block="editingBlock"
+        @save="onBlockSave"
+        @remove="onBlockRemove"
+        @close="editingBlock = null"
+      />
+    </template>
+
   </div>
 </template>
 
@@ -136,6 +168,7 @@ async function onBlockRemove(id) {
   overflow: hidden;
 }
 
+/* ── Nav desktop ─────────────────────────────────────────────────────────── */
 .week-nav {
   display: flex;
   align-items: center;
@@ -144,6 +177,11 @@ async function onBlockRemove(id) {
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-bg);
   flex-shrink: 0;
+}
+
+.week-nav--mobile {
+  justify-content: space-between;
+  padding: 8px var(--spacing-page);
 }
 
 .week-label {
@@ -158,10 +196,11 @@ async function onBlockRemove(id) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-block);
   padding: 3px 10px;
-  font-size: 16px;
+  font-size: 13px;
   cursor: pointer;
   color: var(--color-text-muted);
-  line-height: 1.4;
+  line-height: 1.6;
+  font-family: var(--font-base);
   transition: color 0.15s, border-color 0.15s;
 }
 
@@ -186,9 +225,7 @@ async function onBlockRemove(id) {
   background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
 }
 
-.nav-spacer {
-  flex: 1;
-}
+.nav-spacer { flex: 1; }
 
 .person-filter {
   padding: 5px 10px;
@@ -202,10 +239,9 @@ async function onBlockRemove(id) {
   cursor: pointer;
 }
 
-.person-filter:focus {
-  border-color: var(--color-accent);
-}
+.person-filter:focus { border-color: var(--color-accent); }
 
+/* ── Grid desktop ────────────────────────────────────────────────────────── */
 .week-body {
   display: flex;
   flex: 1;
