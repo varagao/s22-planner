@@ -1,17 +1,22 @@
 <script setup>
-import { watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import { useAuthStore } from '../stores/useAuthStore'
 import { useWeekRef } from '../composables/useWeekRef'
 import { useWeekStore } from '../stores/useWeekStore'
 import { useTaskStore } from '../stores/useTaskStore'
 import { useClientStore } from '../stores/useClientStore'
 import WeekSidebar from '../components/week/WeekSidebar.vue'
 import DayColumn from '../components/week/DayColumn.vue'
+import BlockEditModal from '../components/week/BlockEditModal.vue'
 
+const auth = useAuthStore()
 const { weekRef, days, weekLabel, isCurrentWeek, goNext, goPrev, goToday } = useWeekRef()
 
 const weekStore   = useWeekStore()
 const taskStore   = useTaskStore()
 const clientStore = useClientStore()
+
+const editingBlock = ref(null)
 
 onMounted(async () => {
   await Promise.all([
@@ -26,21 +31,33 @@ watch(weekRef, (val) => weekStore.load(val))
 async function onDrop({ taskId, dayKey }) {
   await weekStore.addBlock({
     task: taskId,
-    person: null,   // será editável no bloco — item 7
+    person: auth.user?.id ?? null,
     day_of_week: dayKey,
     hours: 1,
     week_ref: weekRef.value,
   })
+  // Recarrega para obter o expand completo (task → project → client)
+  await weekStore.load(weekRef.value)
 }
 
 function onBlockClick(block) {
-  // Edição de horas — item 7
+  editingBlock.value = block
+}
+
+async function onBlockSave({ id, hours, person }) {
+  await weekStore.editBlock(id, { hours, person: person || null })
+  await weekStore.load(weekRef.value)
+  editingBlock.value = null
+}
+
+async function onBlockRemove(id) {
+  await weekStore.removeBlock(id)
+  editingBlock.value = null
 }
 </script>
 
 <template>
   <div class="week-view">
-    <!-- Header de navegação de semana -->
     <div class="week-nav">
       <button class="nav-btn" @click="goPrev">‹</button>
       <span class="week-label">{{ weekLabel }}</span>
@@ -48,7 +65,6 @@ function onBlockClick(block) {
       <button v-if="!isCurrentWeek" class="today-btn" @click="goToday">Hoje</button>
     </div>
 
-    <!-- Corpo: sidebar + grade -->
     <div class="week-body">
       <WeekSidebar
         :tasks="taskStore.tasks"
@@ -67,6 +83,14 @@ function onBlockClick(block) {
         />
       </div>
     </div>
+
+    <BlockEditModal
+      v-if="editingBlock"
+      :block="editingBlock"
+      @save="onBlockSave"
+      @remove="onBlockRemove"
+      @close="editingBlock = null"
+    />
   </div>
 </template>
 
