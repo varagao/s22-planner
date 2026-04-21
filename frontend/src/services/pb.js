@@ -38,8 +38,12 @@ export const updateProject = (id, data) =>
   pb.collection('project').update(id, data)
 
 // Busca um projeto pelo viewer_token (acesso público sem auth)
+// O token é passado como query param para satisfazer a rule do PocketBase
 export const fetchProjectByToken = (token) =>
-  pb.collection('project').getFirstListItem(`viewer_token="${token}"`, { expand: 'client' })
+  pb.collection('project').getFirstListItem('', {
+    expand: 'client',
+    query:  { token },
+  })
 
 export const generateViewerToken = (id) =>
   pb.collection('project').update(id, { viewer_token: crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '') })
@@ -52,10 +56,11 @@ export const revokeViewerToken = (id) =>
 export const fetchTasks = (filter = '') =>
   pb.collection('task').getFullList({ sort: 'name', expand: 'project,assignee', filter })
 
-export const fetchTasksByProject = (projectId) =>
+export const fetchTasksByProject = (projectId, token = null) =>
   pb.collection('task').getFullList({
     filter: `project="${projectId}" && status != "todo"`,
-    sort: 'due_date',
+    sort:   'due_date',
+    ...(token ? { query: { token } } : {}),
   })
 
 export const createTask = (data) =>

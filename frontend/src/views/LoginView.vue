@@ -1,9 +1,10 @@
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../stores/useAuthStore'
 
 const router = useRouter()
+const route  = useRoute()
 const auth = useAuthStore()
 
 const email = ref('')
@@ -16,7 +17,7 @@ async function handleLogin() {
   loading.value = true
   try {
     await auth.signIn(email.value, password.value)
-    router.push('/')
+    router.push(route.query.redirect || '/')
   } catch (e) {
     error.value = 'Email ou senha incorretos.'
   } finally {

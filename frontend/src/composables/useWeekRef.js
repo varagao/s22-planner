@@ -38,7 +38,7 @@ export function useWeekRef() {
         label: names[i],
         date,
         dateStr: date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', timeZone: 'UTC' }),
-        isToday: toWeekRef(today) === weekRef.value && date.getUTCDate() === today.getDate(),
+        isToday: date.toISOString().slice(0, 10) === today.toISOString().slice(0, 10),
       }
     })
   })

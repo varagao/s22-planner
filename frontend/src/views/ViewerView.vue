@@ -21,7 +21,7 @@ function formatDate(dateStr) {
 onMounted(async () => {
   try {
     project.value = await fetchProjectByToken(route.params.token)
-    tasks.value   = await fetchTasksByProject(project.value.id)
+    tasks.value   = await fetchTasksByProject(project.value.id, route.params.token)
     state.value   = 'ok'
   } catch {
     state.value = 'invalid'

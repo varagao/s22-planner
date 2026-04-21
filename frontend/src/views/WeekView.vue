@@ -47,8 +47,11 @@ function hoursForDay(dayKey) {
 }
 
 const sidebarTasks = computed(() => {
-  if (auth.isAdmin) return taskStore.tasks
-  return taskStore.tasks.filter(t => !t.assignee || t.assignee === auth.user?.id)
+  let tasks = taskStore.tasks.filter(t => t.status !== 'done')
+  if (!auth.isAdmin) {
+    tasks = tasks.filter(t => !t.assignee || t.assignee === auth.user?.id)
+  }
+  return tasks
 })
 
 async function onDrop({ taskId, dayKey }) {
