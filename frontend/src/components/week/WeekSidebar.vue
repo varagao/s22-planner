@@ -93,7 +93,7 @@ function onDragStart(e, task) {
 }
 
 .sidebar-title {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -134,8 +134,8 @@ function onDragStart(e, task) {
 
 .project-label {
   padding: 2px var(--spacing-block) 2px calc(var(--spacing-block) + 15px);
-  font-size: 11px;
-  color: var(--color-text-muted);
+  font-size: 12px;
+  color: var(--color-text);
   font-weight: 500;
 }
 
@@ -144,7 +144,7 @@ function onDragStart(e, task) {
   align-items: center;
   gap: 7px;
   padding: 5px var(--spacing-block) 5px calc(var(--spacing-block) + 15px);
-  font-size: 13px;
+  font-size: 12px;
   color: var(--color-text);
   cursor: grab;
   border-radius: var(--radius-block);
@@ -164,6 +164,6 @@ function onDragStart(e, task) {
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
-  opacity: 0.7;
+  opacity: 1;
 }
 </style>
