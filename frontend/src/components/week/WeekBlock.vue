@@ -77,8 +77,8 @@ function blockStyle(block) {
 }
 
 .block-project {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 400;
   color: var(--color-text);
   display: block;
   white-space: nowrap;
@@ -88,8 +88,8 @@ function blockStyle(block) {
 }
 
 .block-task {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 700;
   color: var(--color-text);
   display: block;
   word-break: break-word;

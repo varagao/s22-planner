@@ -108,7 +108,7 @@ function onDragStart(e, task) {
 }
 
 .client-group {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 .client-label {
@@ -117,7 +117,7 @@ function onDragStart(e, task) {
   gap: 7px;
   padding: 4px var(--spacing-block);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text);
 }
 
@@ -135,8 +135,8 @@ function onDragStart(e, task) {
 .project-label {
   padding: 2px var(--spacing-block) 2px calc(var(--spacing-block) + 15px);
   font-size: 12px;
-  color: var(--color-text);
-  font-weight: 500;
+  color: var(--color-text-muted);
+  font-weight: 400;
 }
 
 .task-item {
@@ -145,6 +145,7 @@ function onDragStart(e, task) {
   gap: 7px;
   padding: 5px var(--spacing-block) 5px calc(var(--spacing-block) + 15px);
   font-size: 12px;
+  font-weight: 700;
   color: var(--color-text);
   cursor: grab;
   border-radius: var(--radius-block);
