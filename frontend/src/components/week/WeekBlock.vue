@@ -67,7 +67,7 @@ function blockStyle(block) {
   user-select: none;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
 }
 
 .week-block:hover {
@@ -75,7 +75,7 @@ function blockStyle(block) {
 }
 
 .block-project {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   display: block;
   white-space: nowrap;
@@ -96,7 +96,8 @@ function blockStyle(block) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 3px;
+  margin-top: auto;
+  padding-top: 4px;
 }
 
 .block-person {
