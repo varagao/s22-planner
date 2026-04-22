@@ -17,9 +17,11 @@ const grouped = computed(() => {
   }
 
   for (const task of props.tasks) {
-    const project = task.expand?.project
-    const client  = project?.expand?.client
-    if (!project || !client) continue
+    const project  = task.expand?.project
+    if (!project) continue
+    const clientId = project.client
+    const client   = props.clients.find(c => c.id === clientId)
+    if (!client) continue
 
     if (!map.has(client.id)) {
       map.set(client.id, { client, projects: new Map() })

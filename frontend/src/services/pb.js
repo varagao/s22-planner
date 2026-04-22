@@ -54,7 +54,7 @@ export const revokeViewerToken = (id) =>
 // ── Task ─────────────────────────────────────────────────────────────────────
 
 export const fetchTasks = (filter = '') =>
-  pb.collection('task').getFullList({ sort: 'name', expand: 'project,project.client,assignee', filter })
+  pb.collection('task').getFullList({ sort: 'name', expand: 'project,assignee', filter })
 
 export const fetchTasksByProject = (projectId, token = null) =>
   pb.collection('task').getFullList({
