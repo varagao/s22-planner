@@ -4,7 +4,7 @@
 :root {
   --sidebar-width: 280px;
   --day-col-min-width: 160px;
-  --spacing-block: 12px;
+  --spacing-block: 8px;
   --spacing-page: 24px;
   --header-height: 56px;
 }

@@ -102,6 +102,7 @@ function blockStyle(block) {
 
 .block-client {
   flex-shrink: 0;
+  font-weight: 700;
 }
 
 .block-task {
