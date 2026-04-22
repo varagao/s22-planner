@@ -15,6 +15,10 @@ function clientColor(block) {
   return block.expand?.task?.expand?.project?.expand?.client?.color ?? '#ccc'
 }
 
+function projectName(block) {
+  return block.expand?.task?.expand?.project?.name ?? ''
+}
+
 function taskName(block) {
   return block.expand?.task?.name ?? '—'
 }
@@ -42,6 +46,7 @@ function blockStyle(block) {
     @click="$emit('click', block)"
     @dragstart="onDragStart($event, block)"
   >
+    <span v-if="projectName(block)" class="block-project" :style="{ color: clientColor(block) }">{{ projectName(block) }}</span>
     <span class="block-task">{{ taskName(block) }}</span>
     <div class="block-meta">
       <span class="block-person">{{ personName(block) }}</span>
@@ -67,6 +72,18 @@ function blockStyle(block) {
 
 .week-block:hover {
   box-shadow: var(--shadow-card);
+}
+
+.block-project {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 1px;
 }
 
 .block-task {
