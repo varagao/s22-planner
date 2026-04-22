@@ -79,7 +79,7 @@ function onDrop(e) {
 }
 
 .day-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -96,7 +96,7 @@ function onDrop(e) {
 }
 
 .day-hours {
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--font-mono);
   color: var(--color-text-muted);
   margin-top: 2px;
