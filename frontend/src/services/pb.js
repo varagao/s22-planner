@@ -2,6 +2,13 @@ import PocketBase from 'pocketbase'
 
 const pb = new PocketBase(import.meta.env.VITE_PB_URL || 'http://localhost:8090')
 
+// Redireciona ao login quando o token expira
+pb.authStore.onChange(() => {
+  if (!pb.authStore.isValid && window.location.pathname !== '/login') {
+    window.location.href = '/login'
+  }
+})
+
 export default pb
 
 // ── Auth ─────────────────────────────────────────────────────────────────────

@@ -10,6 +10,9 @@ export const useWeekStore = defineStore('week', () => {
     loading.value = true
     try {
       blocks.value = await fetchTimeBlocks(weekRef)
+    } catch (e) {
+      console.error('[weekStore] load:', e)
+      throw e
     } finally {
       loading.value = false
     }

@@ -20,18 +20,23 @@ const weekStore   = useWeekStore()
 const taskStore   = useTaskStore()
 const clientStore = useClientStore()
 
-const members       = ref([])
-const editingBlock  = ref(null)
+const members        = ref([])
+const editingBlock   = ref(null)
 const selectedPerson = ref(auth.isAdmin ? '' : auth.user?.id ?? '')
+const loadError      = ref('')
 
 onMounted(async () => {
-  const [, , , m] = await Promise.all([
-    taskStore.load(),
-    clientStore.load(),
-    weekStore.load(weekRef.value),
-    fetchMembers(),
-  ])
-  members.value = m
+  try {
+    const [, , , m] = await Promise.all([
+      taskStore.load(),
+      clientStore.load(),
+      weekStore.load(weekRef.value),
+      fetchMembers(),
+    ])
+    members.value = m
+  } catch (e) {
+    loadError.value = e?.message || 'Erro ao carregar dados. Verifique a conexão com o PocketBase.'
+  }
 })
 
 watch(weekRef, (val) => weekStore.load(val))
@@ -94,6 +99,8 @@ async function onBlockRemove(id) {
 
 <template>
   <div class="week-view">
+
+    <div v-if="loadError" class="load-error">{{ loadError }}</div>
 
     <!-- ── Mobile ─────────────────────────────────────────────────────────── -->
     <template v-if="isMobile">
@@ -169,6 +176,15 @@ async function onBlockRemove(id) {
   height: calc(100vh - var(--header-height));
   margin: calc(-1 * var(--spacing-page));
   overflow: hidden;
+}
+
+.load-error {
+  padding: 12px var(--spacing-page);
+  background-color: color-mix(in srgb, var(--color-alert) 10%, var(--color-bg));
+  color: var(--color-alert);
+  font-size: 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-alert) 20%, transparent);
+  flex-shrink: 0;
 }
 
 /* ── Nav desktop ─────────────────────────────────────────────────────────── */

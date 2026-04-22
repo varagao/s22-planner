@@ -10,6 +10,9 @@ export const useTaskStore = defineStore('task', () => {
     loading.value = true
     try {
       tasks.value = await fetchTasks()
+    } catch (e) {
+      console.error('[taskStore] load:', e)
+      throw e
     } finally {
       loading.value = false
     }

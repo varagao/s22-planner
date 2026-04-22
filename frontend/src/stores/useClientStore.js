@@ -10,6 +10,9 @@ export const useClientStore = defineStore('client', () => {
     loading.value = true
     try {
       clients.value = await fetchClients()
+    } catch (e) {
+      console.error('[clientStore] load:', e)
+      throw e
     } finally {
       loading.value = false
     }
