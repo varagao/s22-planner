@@ -27,9 +27,11 @@ function handleLogout() {
         <div v-if="auth.isAdmin" class="dropdown">
           <RouterLink to="/manage" class="dropdown-trigger">Criar</RouterLink>
           <div class="dropdown-menu">
-            <RouterLink to="/manage?tab=clients">Cliente</RouterLink>
-            <RouterLink to="/manage?tab=projects">Projeto</RouterLink>
-            <RouterLink to="/manage?tab=tasks">Tarefa</RouterLink>
+            <div class="dropdown-inner">
+              <RouterLink to="/manage?tab=clients">Cliente</RouterLink>
+              <RouterLink to="/manage?tab=projects">Projeto</RouterLink>
+              <RouterLink to="/manage?tab=tasks">Tarefa</RouterLink>
+            </div>
           </div>
         </div>
       </nav>
@@ -39,8 +41,10 @@ function handleLogout() {
         <div v-if="auth.isAdmin" class="dropdown dropdown--right">
           <span class="shell-username dropdown-trigger">{{ auth.user?.name || auth.user?.email }}</span>
           <div class="dropdown-menu">
-            <RouterLink to="/people">Pessoas</RouterLink>
-            <button class="menu-logout" @click="handleLogout">Sair</button>
+            <div class="dropdown-inner">
+              <RouterLink to="/people">Pessoas</RouterLink>
+              <button class="menu-logout" @click="handleLogout">Sair</button>
+            </div>
           </div>
         </div>
         <template v-else>
@@ -134,17 +138,13 @@ function handleLogout() {
 .dropdown-menu {
   display: none;
   position: absolute;
-  top: calc(100% + 6px);
+  top: 100%;
   left: 0;
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
-  box-shadow: var(--shadow-card);
+  padding-top: 6px;
   min-width: 140px;
-  padding: 4px;
   z-index: 200;
   flex-direction: column;
-  gap: 2px;
+  background: transparent;
 }
 
 .dropdown--right .dropdown-menu {
@@ -156,8 +156,20 @@ function handleLogout() {
   display: flex;
 }
 
-.dropdown-menu a,
-.dropdown-menu .menu-logout {
+.dropdown-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 4px;
+  min-width: 140px;
+}
+
+.dropdown-inner a,
+.dropdown-inner .menu-logout {
   display: block;
   padding: 7px 12px;
   color: var(--color-text);
@@ -173,8 +185,8 @@ function handleLogout() {
   transition: background-color 0.12s;
 }
 
-.dropdown-menu a:hover,
-.dropdown-menu .menu-logout:hover {
+.dropdown-inner a:hover,
+.dropdown-inner .menu-logout:hover {
   background-color: var(--color-border);
 }
 
