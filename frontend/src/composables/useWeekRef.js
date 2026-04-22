@@ -1,8 +1,9 @@
 import { ref, computed } from 'vue'
 
 function toWeekRef(date) {
-  // Calcula a semana ISO (YYYY-Www) a partir de uma Date
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  // Usa métodos UTC para evitar bug de fuso: datas vindas de mondayOf são
+  // meia-noite UTC, que em fusos negativos (ex: UTC-3) viram o dia anterior.
+  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
   const dayNum = d.getUTCDay() || 7 // domingo = 7
   d.setUTCDate(d.getUTCDate() + 4 - dayNum)
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
