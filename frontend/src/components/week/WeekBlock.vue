@@ -31,8 +31,11 @@ function personName(block) {
 const HOUR_HEIGHT = 52 // px por hora
 
 function blockStyle(block) {
+  const color = clientColor(block)
   return {
-    borderLeftColor: clientColor(block),
+    backgroundColor: color + '28',
+    borderColor:     color + '70',
+    borderLeftColor: color,
     minHeight: `${Math.max(block.hours ?? 1, 0.5) * HOUR_HEIGHT}px`,
   }
 }
@@ -46,7 +49,7 @@ function blockStyle(block) {
     @click="$emit('click', block)"
     @dragstart="onDragStart($event, block)"
   >
-    <span v-if="projectName(block)" class="block-project" :style="{ color: clientColor(block) }">{{ projectName(block) }}</span>
+    <span v-if="projectName(block)" class="block-project">{{ projectName(block) }}</span>
     <span class="block-task">{{ taskName(block) }}</span>
     <div class="block-meta">
       <span class="block-person">{{ personName(block) }}</span>
@@ -57,8 +60,7 @@ function blockStyle(block) {
 
 <style scoped>
 .week-block {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: 1px solid;
   border-left: 3px solid;
   border-radius: var(--radius-block);
   padding: 6px 8px;
@@ -77,11 +79,12 @@ function blockStyle(block) {
 .block-project {
   font-size: 13px;
   font-weight: 600;
+  color: var(--color-text);
   display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 1px;
+  margin-bottom: 0px;
 }
 
 .block-task {
