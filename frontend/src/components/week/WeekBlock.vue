@@ -17,12 +17,21 @@ function personName(block) {
   const p = block.expand?.person
   return p ? (p.name || p.email) : ''
 }
+
+const HOUR_HEIGHT = 52 // px por hora
+
+function blockStyle(block) {
+  return {
+    borderLeftColor: clientColor(block),
+    minHeight: `${Math.max(block.hours ?? 1, 0.5) * HOUR_HEIGHT}px`,
+  }
+}
 </script>
 
 <template>
   <div
     class="week-block"
-    :style="{ borderLeftColor: clientColor(block) }"
+    :style="blockStyle(block)"
     @click="$emit('click', block)"
   >
     <span class="block-task">{{ taskName(block) }}</span>
@@ -43,6 +52,9 @@ function personName(block) {
   cursor: pointer;
   transition: box-shadow 0.15s;
   user-select: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
 .week-block:hover {
@@ -54,9 +66,7 @@ function personName(block) {
   font-weight: 500;
   color: var(--color-text);
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .block-meta {

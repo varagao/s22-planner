@@ -69,7 +69,7 @@ function onDrop(e) {
   padding: 10px 8px 8px;
   border-bottom: 1px solid var(--color-border);
   position: sticky;
-  top: var(--header-height);
+  top: 0;
   background-color: var(--color-surface);
   z-index: 10;
 }
