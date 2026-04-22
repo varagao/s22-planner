@@ -3,7 +3,13 @@ defineProps({
   block: { type: Object, required: true },
 })
 
-defineEmits(['click'])
+const emit = defineEmits(['click', 'dragstart'])
+
+function onDragStart(e, block) {
+  e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('blockId', block.id)
+  emit('dragstart', block)
+}
 
 function clientColor(block) {
   return block.expand?.task?.expand?.project?.expand?.client?.color ?? '#ccc'
@@ -31,8 +37,10 @@ function blockStyle(block) {
 <template>
   <div
     class="week-block"
+    draggable="true"
     :style="blockStyle(block)"
     @click="$emit('click', block)"
+    @dragstart="onDragStart($event, block)"
   >
     <span class="block-task">{{ taskName(block) }}</span>
     <div class="block-meta">

@@ -7,17 +7,19 @@ const props = defineProps({
   hours: { type: Number, default: 0 },
 })
 
-const emit = defineEmits(['block-click', 'drop'])
+const emit = defineEmits(['block-click', 'drop', 'block-move'])
 
 function onDragOver(e) {
   e.preventDefault()
-  e.dataTransfer.dropEffect = 'copy'
+  e.dataTransfer.dropEffect = 'move'
 }
 
 function onDrop(e) {
   e.preventDefault()
-  const taskId = e.dataTransfer.getData('taskId')
-  if (taskId) emit('drop', { taskId, dayKey: props.day.key })
+  const blockId = e.dataTransfer.getData('blockId')
+  const taskId  = e.dataTransfer.getData('taskId')
+  if (blockId) emit('block-move', { blockId, dayKey: props.day.key })
+  else if (taskId) emit('drop', { taskId, dayKey: props.day.key })
 }
 </script>
 
@@ -40,6 +42,7 @@ function onDrop(e) {
         :key="block.id"
         :block="block"
         @click="$emit('block-click', block)"
+        @dragstart="() => {}"
       />
 
       <div v-if="blocks.length === 0" class="day-empty" />

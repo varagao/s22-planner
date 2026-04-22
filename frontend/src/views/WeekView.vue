@@ -95,6 +95,11 @@ async function onBlockRemove(id) {
   await weekStore.removeBlock(id)
   editingBlock.value = null
 }
+
+async function onBlockMove({ blockId, dayKey }) {
+  await weekStore.editBlock(blockId, { day_of_week: dayKey })
+  await weekStore.load(weekRef.value)
+}
 </script>
 
 <template>
@@ -153,6 +158,7 @@ async function onBlockRemove(id) {
             :hours="hoursForDay(day.key)"
             @block-click="onBlockClick"
             @drop="onDrop"
+            @block-move="onBlockMove"
           />
         </div>
       </div>
