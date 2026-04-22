@@ -1,8 +1,11 @@
 <script setup>
 import { ref } from 'vue'
+import { useRoute } from 'vue-router'
 import ClientSection from '../components/manage/ClientSection.vue'
 import ProjectSection from '../components/manage/ProjectSection.vue'
 import TaskSection from '../components/manage/TaskSection.vue'
+
+const route = useRoute()
 
 const tabs = [
   { key: 'clients', label: 'Clientes' },
@@ -10,7 +13,9 @@ const tabs = [
   { key: 'tasks', label: 'Tarefas' },
 ]
 
-const activeTab = ref('clients')
+const validTabs = tabs.map(t => t.key)
+const initialTab = validTabs.includes(route.query.tab) ? route.query.tab : 'clients'
+const activeTab = ref(initialTab)
 </script>
 
 <template>
