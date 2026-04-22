@@ -156,7 +156,7 @@ function assigneeName(task) {
         <select v-model="form.project" required :disabled="saving">
           <option value="" disabled>Selecione…</option>
           <option v-for="p in projectStore.projects" :key="p.id" :value="p.id">
-            {{ p.name }}
+            {{ p.expand?.client?.name ? p.expand.client.name + ' — ' : '' }}{{ p.name }}
           </option>
         </select>
       </div>
