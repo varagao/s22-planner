@@ -64,7 +64,7 @@ function onDrop(e) {
 .day-header {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: left;
   gap: 1px;
   padding: 10px 8px 8px;
   border-bottom: 1px solid var(--color-border);
