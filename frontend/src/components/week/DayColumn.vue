@@ -11,7 +11,6 @@ const emit = defineEmits(['block-click', 'drop', 'block-move'])
 
 function onDragOver(e) {
   e.preventDefault()
-  e.dataTransfer.dropEffect = 'move'
 }
 
 function onDrop(e) {
