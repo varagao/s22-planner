@@ -77,8 +77,6 @@ function blockStyle(block) {
 .block-project {
   font-size: 10px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
   display: block;
   white-space: nowrap;
   overflow: hidden;
