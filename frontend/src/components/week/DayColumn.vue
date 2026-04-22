@@ -83,7 +83,7 @@ function onDrop(e) {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 .today .day-label {
@@ -92,7 +92,7 @@ function onDrop(e) {
 
 .day-date {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--color-text);
 }
 
 .day-hours {

@@ -72,7 +72,7 @@ function handleLogout() {
 .shell-nav a {
   padding: 5px 12px;
   border-radius: var(--radius-block);
-  color: var(--color-text-muted);
+  color: var(--color-text);
   text-decoration: none;
   font-size: 14px;
   transition: color 0.15s, background-color 0.15s;
