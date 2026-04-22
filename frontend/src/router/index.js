@@ -39,10 +39,13 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const auth = useAuthStore()
 
   if (to.meta.public) return true
+
+  // Valida token contra o servidor — JWT local pode parecer válido mas ser rejeitado
+  await auth.refresh()
 
   if (to.meta.requiresAuth && !auth.isLoggedIn) {
     return { name: 'login', query: { redirect: to.fullPath } }

@@ -29,5 +29,16 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
   }
 
-  return { user, token, isLoggedIn, role, isAdmin, isMember, signIn, signOut }
+  // Valida o token contra o servidor. Se inválido, faz logout.
+  async function refresh() {
+    if (!pb.authStore.isValid) return
+    try {
+      await pb.collection('users').authRefresh()
+      user.value = pb.authStore.model
+    } catch {
+      signOut()
+    }
+  }
+
+  return { user, token, isLoggedIn, role, isAdmin, isMember, signIn, signOut, refresh }
 })
