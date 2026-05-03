@@ -25,12 +25,15 @@ const editingBlock   = ref(null)
 const selectedPerson = ref(auth.isAdmin ? '' : auth.user?.id ?? '')
 const loadError      = ref('')
 
+const startDate = computed(() => days.value[0].dateISO)
+const endDate   = computed(() => days.value[4].dateISO)
+
 onMounted(async () => {
   try {
     const [, , , m] = await Promise.all([
       taskStore.load(),
       clientStore.load(),
-      weekStore.load(weekRef.value),
+      weekStore.load(startDate.value, endDate.value),
       fetchMembers(),
     ])
     members.value = m
@@ -39,10 +42,25 @@ onMounted(async () => {
   }
 })
 
-watch(weekRef, (val) => weekStore.load(val))
+watch(weekRef, () => weekStore.load(startDate.value, endDate.value))
+
+// Total de horas alocadas por tarefa na semana visível
+const taskAllocatedHours = computed(() => {
+  const map = {}
+  for (const block of weekStore.blocks) {
+    map[block.task] = (map[block.task] || 0) + (block.hours || 0)
+  }
+  return map
+})
+
+function dayByKey(dayKey) {
+  return days.value.find(d => d.key === dayKey)
+}
 
 function blocksForDay(dayKey) {
-  const all = weekStore.blocksForDay(dayKey)
+  const day = dayByKey(dayKey)
+  if (!day) return []
+  const all = weekStore.blocksForDay(day.dateISO)
   if (!selectedPerson.value) return all
   return all.filter(b => b.person === selectedPerson.value)
 }
@@ -60,34 +78,34 @@ const sidebarTasks = computed(() => {
 })
 
 async function onDrop({ taskId, dayKey }) {
+  const day = dayByKey(dayKey)
   await weekStore.addBlock({
-    task: taskId,
+    task:   taskId,
     person: selectedPerson.value || auth.user?.id || null,
-    day_of_week: dayKey,
-    hours: 1,
-    week_ref: weekRef.value,
+    date:   day.dateISO,
+    hours:  1,
   })
-  await weekStore.load(weekRef.value)
+  await weekStore.load(startDate.value, endDate.value)
 }
 
 async function onAlloc({ taskId, dayKey }) {
+  const day = dayByKey(dayKey)
   await weekStore.addBlock({
-    task: taskId,
+    task:   taskId,
     person: auth.user?.id || null,
-    day_of_week: dayKey,
-    hours: 1,
-    week_ref: weekRef.value,
+    date:   day.dateISO,
+    hours:  1,
   })
-  await weekStore.load(weekRef.value)
+  await weekStore.load(startDate.value, endDate.value)
 }
 
 function onBlockClick(block) {
   editingBlock.value = block
 }
 
-async function onBlockSave({ id, hours, person }) {
-  await weekStore.editBlock(id, { hours, person: person || null })
-  await weekStore.load(weekRef.value)
+async function onBlockSave({ id, hours, person, date }) {
+  await weekStore.editBlock(id, { hours, person: person || null, date })
+  await weekStore.load(startDate.value, endDate.value)
   editingBlock.value = null
 }
 
@@ -97,8 +115,9 @@ async function onBlockRemove(id) {
 }
 
 async function onBlockMove({ blockId, dayKey }) {
-  await weekStore.editBlock(blockId, { day_of_week: dayKey })
-  await weekStore.load(weekRef.value)
+  const day = dayByKey(dayKey)
+  await weekStore.editBlock(blockId, { date: day.dateISO })
+  await weekStore.load(startDate.value, endDate.value)
 }
 </script>
 
@@ -122,6 +141,7 @@ async function onBlockMove({ blockId, dayKey }) {
         :clients="clientStore.clients"
         :blocks-for-day="blocksForDay"
         :hours-for-day="hoursForDay"
+        :task-allocated-hours="taskAllocatedHours"
         @alloc="onAlloc"
         @block-save="onBlockSave"
         @block-remove="onBlockRemove"
@@ -156,6 +176,7 @@ async function onBlockMove({ blockId, dayKey }) {
             :day="day"
             :blocks="blocksForDay(day.key)"
             :hours="hoursForDay(day.key)"
+            :task-allocated-hours="taskAllocatedHours"
             @block-click="onBlockClick"
             @drop="onDrop"
             @block-move="onBlockMove"

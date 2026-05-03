@@ -1,9 +1,17 @@
 <script setup>
-defineProps({
+import { computed } from 'vue'
+
+const props = defineProps({
   block: { type: Object, required: true },
+  taskAllocatedHours: { type: Number, default: 0 },
 })
 
 const emit = defineEmits(['click', 'dragstart'])
+
+const estimatedHours = computed(() => props.block.expand?.task?.estimated_hours ?? 0)
+const isExtra = computed(() =>
+  estimatedHours.value > 0 && props.taskAllocatedHours > estimatedHours.value
+)
 
 function onDragStart(e, block) {
   e.dataTransfer.effectAllowed = 'move'
@@ -48,6 +56,7 @@ function blockStyle(block) {
 <template>
   <div
     class="week-block"
+    :class="{ 'is-extra': isExtra }"
     draggable="true"
     :style="blockStyle(block)"
     @click="$emit('click', block)"
@@ -81,6 +90,11 @@ function blockStyle(block) {
 
 .week-block:hover {
   box-shadow: var(--shadow-card);
+}
+
+.week-block.is-extra .block-task,
+.week-block.is-extra .block-hours {
+  color: var(--color-alert);
 }
 
 .block-project {

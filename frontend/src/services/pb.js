@@ -81,9 +81,9 @@ export const deleteTask = (id) =>
 
 // ── Time Block ───────────────────────────────────────────────────────────────
 
-export const fetchTimeBlocks = (weekRef) =>
+export const fetchTimeBlocks = (startDate, endDate) =>
   pb.collection('time_block').getFullList({
-    filter: `week_ref="${weekRef}"`,
+    filter: `date >= "${startDate} 00:00:00" && date <= "${endDate} 23:59:59"`,
     expand: 'task,task.project,task.project.client,person',
   })
 

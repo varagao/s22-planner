@@ -2,9 +2,10 @@
 import WeekBlock from './WeekBlock.vue'
 
 const props = defineProps({
-  day: { type: Object, required: true },   // { key, label, dateStr, isToday }
+  day: { type: Object, required: true },
   blocks: { type: Array, default: () => [] },
   hours: { type: Number, default: 0 },
+  taskAllocatedHours: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['block-click', 'drop', 'block-move'])
@@ -40,6 +41,7 @@ function onDrop(e) {
         v-for="block in blocks"
         :key="block.id"
         :block="block"
+        :task-allocated-hours="taskAllocatedHours[block.task] || 0"
         @click="$emit('block-click', block)"
         @dragstart="() => {}"
       />

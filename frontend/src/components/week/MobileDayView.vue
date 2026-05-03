@@ -10,6 +10,7 @@ const props = defineProps({
   clients: { type: Array, default: () => [] },
   blocksForDay: { type: Function, required: true },
   hoursForDay: { type: Function, required: true },
+  taskAllocatedHours: { type: Object, default: () => ({}) },
 })
 
 const emit = defineEmits(['alloc', 'block-save', 'block-remove'])
@@ -64,6 +65,7 @@ function onBlockClick(block) {
         v-for="block in currentBlocks"
         :key="block.id"
         :block="block"
+        :task-allocated-hours="taskAllocatedHours[block.task] || 0"
         @click="onBlockClick(block)"
       />
 

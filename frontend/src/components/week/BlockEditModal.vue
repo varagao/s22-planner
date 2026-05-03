@@ -10,8 +10,9 @@ const props = defineProps({
 const emit = defineEmits(['save', 'remove', 'close'])
 
 const members = ref([])
-const hours = ref(props.block.hours)
+const hours  = ref(props.block.hours)
 const person = ref(props.block.person ?? '')
+const date   = ref(props.block.date?.slice(0, 10) ?? '')
 const saving = ref(false)
 
 onMounted(async () => {
@@ -33,7 +34,7 @@ function clientColor() {
 async function handleSave() {
   saving.value = true
   try {
-    await emit('save', { id: props.block.id, hours: hours.value, person: person.value || null })
+    await emit('save', { id: props.block.id, hours: hours.value, person: person.value || null, date: date.value })
   } finally {
     saving.value = false
   }
@@ -85,6 +86,16 @@ async function handleRemove() {
             @click="hours = Math.min(8, hours + 0.5)"
           >+</button>
         </div>
+      </div>
+
+      <div class="field">
+        <label>Data</label>
+        <input
+          v-model="date"
+          type="date"
+          class="date-input"
+          :disabled="saving"
+        />
       </div>
 
       <div class="field">
@@ -226,6 +237,21 @@ select {
 }
 
 select:focus {
+  border-color: var(--color-accent);
+}
+
+.date-input {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-block);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-base);
+  font-size: 14px;
+  outline: none;
+}
+
+.date-input:focus {
   border-color: var(--color-accent);
 }
 

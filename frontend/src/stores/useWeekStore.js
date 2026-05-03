@@ -6,10 +6,10 @@ export const useWeekStore = defineStore('week', () => {
   const blocks = ref([])
   const loading = ref(false)
 
-  async function load(weekRef) {
+  async function load(startDate, endDate) {
     loading.value = true
     try {
-      blocks.value = await fetchTimeBlocks(weekRef)
+      blocks.value = await fetchTimeBlocks(startDate, endDate)
     } catch (e) {
       console.error('[weekStore] load:', e)
       throw e
@@ -35,12 +35,12 @@ export const useWeekStore = defineStore('week', () => {
     blocks.value = blocks.value.filter(b => b.id !== id)
   }
 
-  function blocksForDay(dayKey) {
-    return blocks.value.filter(b => b.day_of_week === dayKey)
+  function blocksForDay(dateISO) {
+    return blocks.value.filter(b => b.date?.slice(0, 10) === dateISO)
   }
 
-  function hoursForDay(dayKey) {
-    return blocksForDay(dayKey).reduce((sum, b) => sum + (b.hours || 0), 0)
+  function hoursForDay(dateISO) {
+    return blocksForDay(dateISO).reduce((sum, b) => sum + (b.hours || 0), 0)
   }
 
   return { blocks, loading, load, addBlock, editBlock, removeBlock, blocksForDay, hoursForDay }
