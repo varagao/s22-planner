@@ -5,7 +5,7 @@ migrate(
     const col = app.findCollectionByNameOrId("time_block")
 
     // 1. Adiciona campo date (temporariamente não obrigatório para a migração de dados)
-    col.fields.add({ name: "date", type: "date", required: false })
+    col.fields.add(new DateField({ name: "date", required: false }))
     app.save(col)
 
     // 2. Converte week_ref + day_of_week → date em todos os registros existentes
@@ -46,11 +46,11 @@ migrate(
   (app) => {
     // Rollback: restaura week_ref e day_of_week, remove date
     const col = app.findCollectionByNameOrId("time_block")
-    col.fields.add({ name: "week_ref",    type: "text",   required: true })
-    col.fields.add({
-      name: "day_of_week", type: "select", required: true,
+    col.fields.add(new TextField({ name: "week_ref", required: true }))
+    col.fields.add(new SelectField({
+      name: "day_of_week", required: true,
       maxSelect: 1, values: ["mon", "tue", "wed", "thu", "fri"],
-    })
+    }))
     col.fields.removeByName("date")
     app.save(col)
   }
