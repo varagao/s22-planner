@@ -100,6 +100,20 @@ Para mudar aparência global, editar apenas `theme.css`. Para mudar layout, edit
 - Singular, snake_case: `client`, `project`, `task`, `time_block`, `user`
 - IDs gerados pelo PocketBase (não criar IDs customizados)
 
+### Migrations (PocketBase v0.22+)
+- Usar `app.save(record)` — **nunca** `app.saveRecord()` (não existe nesta versão)
+- Adicionar campos em collections existentes com construtores tipados — **nunca** objetos literais:
+  ```js
+  // ✅ correto
+  col.fields.add(new DateField({ name: "date", required: false }))
+  col.fields.add(new TextField({ name: "nome", required: true }))
+  col.fields.add(new SelectField({ name: "status", maxSelect: 1, values: ["a", "b"] }))
+
+  // ❌ errado — quebra em runtime
+  col.fields.add({ name: "date", type: "date", required: false })
+  ```
+- Objetos literais funcionam **apenas** dentro de `new Collection({fields: [...]})` na criação inicial
+
 ---
 
 ## Autenticação e permissões
