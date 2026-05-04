@@ -8,7 +8,7 @@ const props = defineProps({
   taskAllocatedHours: { type: Object, default: () => ({}) },
 })
 
-const emit = defineEmits(['block-click', 'drop', 'block-move'])
+const emit = defineEmits(['block-click', 'drop', 'block-move', 'task-complete'])
 
 function onDragOver(e) {
   e.preventDefault()
@@ -44,6 +44,7 @@ function onDrop(e) {
         :task-allocated-hours="taskAllocatedHours[block.task] || 0"
         @click="$emit('block-click', block)"
         @dragstart="() => {}"
+        @complete="(task) => $emit('task-complete', task)"
       />
 
       <div v-if="blocks.length === 0" class="day-empty" />

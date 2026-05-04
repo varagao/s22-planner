@@ -6,10 +6,11 @@ import { useWeekRef } from '../composables/useWeekRef'
 import { useWeekStore } from '../stores/useWeekStore'
 import { useTaskStore } from '../stores/useTaskStore'
 import { useClientStore } from '../stores/useClientStore'
-import { fetchMembers } from '../services/pb'
+import { fetchMembers, updateTask } from '../services/pb'
 import WeekSidebar from '../components/week/WeekSidebar.vue'
 import DayColumn from '../components/week/DayColumn.vue'
 import BlockEditModal from '../components/week/BlockEditModal.vue'
+import CompleteTaskModal from '../components/week/CompleteTaskModal.vue'
 import MobileDayView from '../components/week/MobileDayView.vue'
 
 const auth = useAuthStore()
@@ -20,10 +21,11 @@ const weekStore   = useWeekStore()
 const taskStore   = useTaskStore()
 const clientStore = useClientStore()
 
-const members        = ref([])
-const editingBlock   = ref(null)
-const selectedPerson = ref(auth.isAdmin ? '' : auth.user?.id ?? '')
-const loadError      = ref('')
+const members          = ref([])
+const editingBlock     = ref(null)
+const completingTask   = ref(null)
+const selectedPerson   = ref(auth.isAdmin ? '' : auth.user?.id ?? '')
+const loadError        = ref('')
 
 const startDate = computed(() => days.value[0].dateISO)
 const endDate   = computed(() => days.value[4].dateISO)
@@ -114,6 +116,18 @@ async function onBlockRemove(id) {
   editingBlock.value = null
 }
 
+function onTaskComplete(task) {
+  completingTask.value = task
+}
+
+async function onCompleteConfirm({ taskId, actualHours }) {
+  const today = new Date().toISOString().slice(0, 10)
+  await updateTask(taskId, { status: 'done', actual_hours: actualHours, completed_at: today })
+  await taskStore.load()
+  await weekStore.load(startDate.value, endDate.value)
+  completingTask.value = null
+}
+
 async function onBlockMove({ blockId, dayKey }) {
   const day = dayByKey(dayKey)
   await weekStore.editBlock(blockId, { date: day.dateISO })
@@ -180,6 +194,7 @@ async function onBlockMove({ blockId, dayKey }) {
             @block-click="onBlockClick"
             @drop="onDrop"
             @block-move="onBlockMove"
+            @task-complete="onTaskComplete"
           />
         </div>
       </div>
@@ -190,6 +205,14 @@ async function onBlockMove({ blockId, dayKey }) {
         @save="onBlockSave"
         @remove="onBlockRemove"
         @close="editingBlock = null"
+      />
+
+      <CompleteTaskModal
+        v-if="completingTask"
+        :task="completingTask"
+        :default-hours="taskAllocatedHours[completingTask.id] || completingTask.estimated_hours || 1"
+        @confirm="onCompleteConfirm"
+        @close="completingTask = null"
       />
     </template>
 

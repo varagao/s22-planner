@@ -6,7 +6,7 @@ const props = defineProps({
   taskAllocatedHours: { type: Number, default: 0 },
 })
 
-const emit = defineEmits(['click', 'dragstart'])
+const emit = defineEmits(['click', 'dragstart', 'complete'])
 
 const estimatedHours = computed(() => props.block.expand?.task?.estimated_hours ?? 0)
 const isExtra = computed(() =>
@@ -71,6 +71,10 @@ function blockStyle(block) {
       <span class="block-person">{{ personName(block) }}</span>
       <span class="block-hours">{{ block.hours }}h</span>
     </div>
+    <button
+      class="btn-complete"
+      @click.stop="emit('complete', block.expand?.task)"
+    >Concluir</button>
   </div>
 </template>
 
@@ -149,5 +153,24 @@ function blockStyle(block) {
   font-family: var(--font-mono);
   flex-shrink: 0;
   margin-left: 4px;
+}
+
+.btn-complete {
+  margin-top: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: var(--font-base);
+  color: var(--color-text-muted);
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-block);
+  cursor: pointer;
+  align-self: flex-start;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.btn-complete:hover {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
 }
 </style>
