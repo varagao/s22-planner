@@ -6,12 +6,13 @@ const props = defineProps({
   taskAllocatedHours: { type: Number, default: 0 },
 })
 
-const emit = defineEmits(['click', 'dragstart', 'complete'])
+const emit = defineEmits(['click', 'dragstart'])
 
 const estimatedHours = computed(() => props.block.expand?.task?.estimated_hours ?? 0)
 const isExtra = computed(() =>
   estimatedHours.value > 0 && props.taskAllocatedHours > estimatedHours.value
 )
+const isDone = computed(() => props.block.expand?.task?.status === 'done')
 
 function onDragStart(e, block) {
   e.dataTransfer.effectAllowed = 'move'
@@ -56,9 +57,9 @@ function blockStyle(block) {
 <template>
   <div
     class="week-block"
-    :class="{ 'is-extra': isExtra }"
+    :class="{ 'is-extra': isExtra, 'is-done': isDone }"
     draggable="true"
-    :style="blockStyle(block)"
+    :style="isDone ? {} : blockStyle(block)"
     @click="$emit('click', block)"
     @dragstart="onDragStart($event, block)"
   >
@@ -71,10 +72,6 @@ function blockStyle(block) {
       <span class="block-person">{{ personName(block) }}</span>
       <span class="block-hours">{{ block.hours }}h</span>
     </div>
-    <button
-      class="btn-complete"
-      @click.stop="emit('complete', block.expand?.task)"
-    >Concluir</button>
   </div>
 </template>
 
@@ -99,6 +96,21 @@ function blockStyle(block) {
 .week-block.is-extra .block-task,
 .week-block.is-extra .block-hours {
   color: var(--color-alert);
+}
+
+.week-block.is-done {
+  background-color: #fff;
+  border-color: #e0e0e0;
+  border-left-color: #e0e0e0;
+  opacity: 0.7;
+}
+
+.week-block.is-done .block-project,
+.week-block.is-done .block-client,
+.week-block.is-done .block-task,
+.week-block.is-done .block-person,
+.week-block.is-done .block-hours {
+  color: #bbb;
 }
 
 .block-project {
@@ -155,22 +167,4 @@ function blockStyle(block) {
   margin-left: 4px;
 }
 
-.btn-complete {
-  margin-top: 6px;
-  padding: 3px 8px;
-  font-size: 11px;
-  font-family: var(--font-base);
-  color: var(--color-text-muted);
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-block);
-  cursor: pointer;
-  align-self: flex-start;
-  transition: color 0.15s, border-color 0.15s;
-}
-
-.btn-complete:hover {
-  color: var(--color-accent);
-  border-color: var(--color-accent);
-}
 </style>

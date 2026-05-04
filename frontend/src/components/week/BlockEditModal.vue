@@ -7,7 +7,7 @@ const props = defineProps({
   block: { type: Object, required: true },
 })
 
-const emit = defineEmits(['save', 'remove', 'close'])
+const emit = defineEmits(['save', 'remove', 'complete', 'close'])
 
 const members = ref([])
 const hours  = ref(props.block.hours)
@@ -118,6 +118,14 @@ async function handleRemove() {
           Remover
         </button>
         <div class="form-actions-right">
+          <button
+            type="button"
+            class="btn-complete"
+            :disabled="saving"
+            @click="$emit('complete')"
+          >
+            Concluir tarefa
+          </button>
           <button type="button" class="btn-secondary" @click="$emit('close')">
             Cancelar
           </button>
@@ -266,6 +274,24 @@ select:focus {
   display: flex;
   gap: 8px;
 }
+
+.btn-complete {
+  padding: 7px 14px;
+  background: none;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-block);
+  font-family: var(--font-base);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.btn-complete:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 8%, transparent);
+}
+
+.btn-complete:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .btn-primary {
   padding: 7px 14px;

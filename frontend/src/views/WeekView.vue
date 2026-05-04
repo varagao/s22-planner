@@ -116,8 +116,9 @@ async function onBlockRemove(id) {
   editingBlock.value = null
 }
 
-function onTaskComplete(task) {
-  completingTask.value = task
+function onBlockComplete() {
+  completingTask.value = editingBlock.value?.expand?.task ?? null
+  editingBlock.value = null
 }
 
 async function onCompleteConfirm({ taskId, actualHours }) {
@@ -194,7 +195,6 @@ async function onBlockMove({ blockId, dayKey }) {
             @block-click="onBlockClick"
             @drop="onDrop"
             @block-move="onBlockMove"
-            @task-complete="onTaskComplete"
           />
         </div>
       </div>
@@ -204,6 +204,7 @@ async function onBlockMove({ blockId, dayKey }) {
         :block="editingBlock"
         @save="onBlockSave"
         @remove="onBlockRemove"
+        @complete="onBlockComplete"
         @close="editingBlock = null"
       />
 
