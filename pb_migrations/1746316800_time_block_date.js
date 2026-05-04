@@ -32,7 +32,7 @@ migrate(
       monday.setUTCDate(monday.getUTCDate() + offset)
 
       r.set("date", monday.toISOString().slice(0, 10))
-      app.saveRecord(r)
+      app.save(r)
     }
 
     // 3. Remove campos antigos e torna date obrigatório
