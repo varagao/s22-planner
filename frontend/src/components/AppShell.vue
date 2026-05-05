@@ -232,4 +232,25 @@ function handleLogout() {
   flex: 1;
   padding: var(--spacing-page);
 }
+
+/* ── Mobile ─────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  .shell-header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .shell-nav > a,
+  .shell-nav .dropdown-trigger {
+    padding: 4px 8px;
+    font-size: 14px;
+  }
+
+  .shell-username {
+    max-width: 64px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+  }
+}
 </style>

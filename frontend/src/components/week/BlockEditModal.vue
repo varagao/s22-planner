@@ -293,6 +293,24 @@ select:focus {
 
 .btn-complete:disabled { opacity: 0.6; cursor: not-allowed; }
 
+@media (max-width: 767px) {
+  .form-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .form-actions-right {
+    justify-content: flex-end;
+  }
+
+  .btn-complete {
+    width: 100%;
+    text-align: center;
+    order: -1;
+  }
+}
+
 .btn-primary {
   padding: 7px 14px;
   background-color: var(--color-accent);
