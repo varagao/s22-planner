@@ -97,18 +97,24 @@ const visibleTasks = computed(() => {
 // editing: { type: 'client'|'project'|'task'|'new-client'|'new-project'|'new-task', id?, parentId?, value }
 const editing = ref(null)
 const editInputRef = ref(null)
+let suppressBlur = false
 
 async function startEdit(type, id, currentName) {
   editing.value = { type, id, value: currentName }
   await nextTick()
-  editInputRef.value?.focus()
-  editInputRef.value?.select()
+  focusInput()
 }
 
 async function startCreate(type, parentId = null) {
   editing.value = { type: `new-${type}`, parentId, value: '' }
   await nextTick()
-  editInputRef.value?.focus()
+  focusInput()
+}
+
+function focusInput() {
+  const el = Array.isArray(editInputRef.value) ? editInputRef.value[0] : editInputRef.value
+  el?.focus()
+  el?.select()
 }
 
 async function commitEdit() {
@@ -143,10 +149,14 @@ async function commitEdit() {
   editing.value = null
 }
 
+async function onBlurEdit() {
+  if (suppressBlur) return
+  await commitEdit()
+}
+
 async function onEditKeydown(e) {
   if (e.key === 'Enter') {
     e.preventDefault()
-    // Capture before commitEdit clears editing
     const { type, parentId } = editing.value ?? {}
     await commitEdit()
     if (!type) return
@@ -154,7 +164,9 @@ async function onEditKeydown(e) {
     await startCreate(baseType, parentId ?? resolveParentId(baseType))
   } else if (e.key === 'Tab') {
     e.preventDefault()
+    suppressBlur = true
     await handleTab()
+    suppressBlur = false
   } else if (e.key === 'Escape') {
     editing.value = null
   }
@@ -168,28 +180,28 @@ function resolveParentId(type) {
 
 async function handleTab() {
   if (!editing.value) return
-  const { type, value } = editing.value
+  const { type, value, parentId } = editing.value
   const name = value.trim()
 
   if (type === 'new-client' && name) {
-    // Create the client, then zoom in and start creating a project
+    // Cria o cliente e abre input de projeto aninhado na mesma view (sem zoomIn)
     const c = await createClient({ name, color: randomColor() })
     clientStore.clients.push(c)
+    collapsed[c.id] = false
     editing.value = null
-    zoomIn('client', c.id)
     await nextTick()
     await startCreate('project', c.id)
   } else if (type === 'new-project' && name) {
-    // Create the project, then zoom in and start creating a task
-    const parentId = editing.value.parentId ?? focusedClient.value?.id
-    const p = await createProject({ name, client: parentId, status: 'active' })
+    // Cria o projeto e abre input de tarefa aninhado na mesma view (sem zoomIn)
+    const clientId = parentId ?? focusedClient.value?.id
+    const p = await createProject({ name, client: clientId, status: 'active' })
     projectStore.projects.push(p)
+    collapsed[p.id] = false
     editing.value = null
-    zoomIn('project', p.id)
     await nextTick()
     await startCreate('task', p.id)
   }
-  // Tab at task level does nothing
+  // Tab no nível de tarefa não faz nada
 }
 
 function randomColor() {
@@ -328,7 +340,7 @@ onMounted(async () => {
                 v-model="editing.value"
                 class="node-input"
                 @keydown="onEditKeydown"
-                @blur="commitEdit"
+                @blur="onBlurEdit"
               />
             </span>
             <span
@@ -368,7 +380,7 @@ onMounted(async () => {
                     v-model="editing.value"
                     class="node-input"
                     @keydown="onEditKeydown"
-                    @blur="commitEdit"
+                    @blur="onBlurEdit"
                   />
                 </span>
                 <span
@@ -402,7 +414,7 @@ onMounted(async () => {
                         v-model="editing.value"
                         class="node-input"
                         @keydown="onEditKeydown"
-                        @blur="commitEdit"
+                        @blur="onBlurEdit"
                       />
                     </span>
                     <span v-else class="node-label">{{ task.name }}</span>
@@ -421,7 +433,7 @@ onMounted(async () => {
                         class="node-input"
                         placeholder="Nova tarefa..."
                         @keydown="onEditKeydown"
-                        @blur="commitEdit"
+                        @blur="onBlurEdit"
                       />
                     </span>
                   </div>
@@ -470,7 +482,7 @@ onMounted(async () => {
                     class="node-input"
                     placeholder="Novo projeto..."
                     @keydown="onEditKeydown"
-                    @blur="commitEdit"
+                    @blur="onBlurEdit"
                   />
                 </span>
               </div>
@@ -520,7 +532,7 @@ onMounted(async () => {
                 class="node-input"
                 placeholder="Novo cliente..."
                 @keydown="onEditKeydown"
-                @blur="commitEdit"
+                @blur="onBlurEdit"
               />
             </span>
           </div>
@@ -583,7 +595,7 @@ onMounted(async () => {
                 v-model="editing.value"
                 class="node-input"
                 @keydown="onEditKeydown"
-                @blur="commitEdit"
+                @blur="onBlurEdit"
               />
             </span>
             <span
@@ -616,7 +628,7 @@ onMounted(async () => {
                     v-model="editing.value"
                     class="node-input"
                     @keydown="onEditKeydown"
-                    @blur="commitEdit"
+                    @blur="onBlurEdit"
                   />
                 </span>
                 <span v-else class="node-label">{{ task.name }}</span>
@@ -634,7 +646,7 @@ onMounted(async () => {
                     class="node-input"
                     placeholder="Nova tarefa..."
                     @keydown="onEditKeydown"
-                    @blur="commitEdit"
+                    @blur="onBlurEdit"
                   />
                 </span>
               </div>
@@ -681,7 +693,7 @@ onMounted(async () => {
                 class="node-input"
                 placeholder="Novo projeto..."
                 @keydown="onEditKeydown"
-                @blur="commitEdit"
+                @blur="onBlurEdit"
               />
             </span>
           </div>
@@ -736,7 +748,7 @@ onMounted(async () => {
                 v-model="editing.value"
                 class="node-input"
                 @keydown="onEditKeydown"
-                @blur="commitEdit"
+                @blur="onBlurEdit"
               />
             </span>
             <span v-else class="node-label">{{ task.name }}</span>
@@ -754,7 +766,7 @@ onMounted(async () => {
                 class="node-input"
                 placeholder="Nova tarefa..."
                 @keydown="onEditKeydown"
-                @blur="commitEdit"
+                @blur="onBlurEdit"
               />
             </span>
           </div>
