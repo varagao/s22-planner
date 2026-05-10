@@ -16,6 +16,16 @@ const routes = [
   },
   {
     path: '/',
+    redirect: '/lista',
+  },
+  {
+    path: '/lista',
+    name: 'lista',
+    component: () => import('../views/ListView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/semana',
     name: 'week',
     component: () => import('../views/WeekView.vue'),
     meta: { requiresAuth: true },
@@ -52,7 +62,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.meta.requiresAdmin && !auth.isAdmin) {
-    return { name: 'week' }
+    return { name: 'lista' }
   }
 
   return true

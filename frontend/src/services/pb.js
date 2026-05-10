@@ -33,6 +33,12 @@ export const createClient = (data) =>
 export const updateClient = (id, data) =>
   pb.collection('client').update(id, data)
 
+export const archiveClient = (id) =>
+  pb.collection('client').update(id, { archived: true })
+
+export const unarchiveClient = (id) =>
+  pb.collection('client').update(id, { archived: false })
+
 // ── Project ──────────────────────────────────────────────────────────────────
 
 export const fetchProjects = (filter = '') =>
@@ -43,6 +49,12 @@ export const createProject = (data) =>
 
 export const updateProject = (id, data) =>
   pb.collection('project').update(id, data)
+
+export const archiveProject = (id) =>
+  pb.collection('project').update(id, { archived: true })
+
+export const unarchiveProject = (id) =>
+  pb.collection('project').update(id, { archived: false })
 
 // Busca um projeto pelo viewer_token (acesso público sem auth)
 // O token é passado como query param para satisfazer a rule do PocketBase
@@ -78,6 +90,12 @@ export const updateTask = (id, data) =>
 
 export const deleteTask = (id) =>
   pb.collection('task').delete(id)
+
+export const archiveTask = (id) =>
+  pb.collection('task').update(id, { archived: true })
+
+export const unarchiveTask = (id) =>
+  pb.collection('task').update(id, { archived: false })
 
 // ── Time Block ───────────────────────────────────────────────────────────────
 

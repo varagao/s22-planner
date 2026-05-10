@@ -21,7 +21,8 @@ function handleLogout() {
       </RouterLink>
 
       <nav class="shell-nav">
-        <RouterLink to="/">Semana</RouterLink>
+        <RouterLink to="/lista">Lista</RouterLink>
+        <RouterLink to="/semana">Semana</RouterLink>
 
         <!-- Criar (dropdown) -->
         <div v-if="auth.isAdmin" class="dropdown">

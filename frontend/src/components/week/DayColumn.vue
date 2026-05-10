@@ -8,7 +8,7 @@ const props = defineProps({
   taskAllocatedHours: { type: Object, default: () => ({}) },
 })
 
-const emit = defineEmits(['block-click', 'drop', 'block-move'])
+const emit = defineEmits(['block-click', 'drop', 'block-move', 'empty-click'])
 
 function onDragOver(e) {
   e.preventDefault()
@@ -46,7 +46,11 @@ function onDrop(e) {
         @dragstart="() => {}"
       />
 
-      <div v-if="blocks.length === 0" class="day-empty" />
+      <div
+        class="day-empty"
+        :class="{ clickable: blocks.length === 0 }"
+        @click="blocks.length === 0 ? $emit('empty-click') : undefined"
+      />
     </div>
   </div>
 </template>
@@ -121,5 +125,16 @@ function onDrop(e) {
 
 .day-empty {
   flex: 1;
+}
+
+.day-empty.clickable {
+  cursor: pointer;
+  border-radius: var(--radius-block);
+  transition: background-color 0.15s;
+  min-height: 40px;
+}
+
+.day-empty.clickable:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 6%, transparent);
 }
 </style>

@@ -12,6 +12,7 @@ import DayColumn from '../components/week/DayColumn.vue'
 import BlockEditModal from '../components/week/BlockEditModal.vue'
 import CompleteTaskModal from '../components/week/CompleteTaskModal.vue'
 import MobileDayView from '../components/week/MobileDayView.vue'
+import AddToWeekModal from '../components/week/AddToWeekModal.vue'
 
 const auth = useAuthStore()
 const { isMobile } = useBreakpoint()
@@ -24,6 +25,7 @@ const clientStore = useClientStore()
 const members          = ref([])
 const editingBlock     = ref(null)
 const completingTask   = ref(null)
+const addingToDay      = ref(null)
 const selectedPerson   = ref(auth.isAdmin ? '' : auth.user?.id ?? '')
 const loadError        = ref('')
 
@@ -134,6 +136,22 @@ async function onBlockMove({ blockId, dayKey }) {
   await weekStore.editBlock(blockId, { date: day.dateISO })
   await weekStore.load(startDate.value, endDate.value)
 }
+
+function openAddModal(day) {
+  addingToDay.value = day
+}
+
+async function onAddBlock({ taskId, dayKey, hours }) {
+  const day = dayByKey(dayKey)
+  await weekStore.addBlock({
+    task:   taskId,
+    person: selectedPerson.value || auth.user?.id || null,
+    date:   day.dateISO,
+    hours,
+  })
+  await weekStore.load(startDate.value, endDate.value)
+  addingToDay.value = null
+}
 </script>
 
 <template>
@@ -195,9 +213,20 @@ async function onBlockMove({ blockId, dayKey }) {
             @block-click="onBlockClick"
             @drop="onDrop"
             @block-move="onBlockMove"
+            @empty-click="openAddModal(day)"
           />
         </div>
       </div>
+
+      <!-- FAB para adicionar bloco -->
+      <button class="week-fab" @click="openAddModal(days[0])" title="Adicionar bloco">+</button>
+
+      <AddToWeekModal
+        v-if="addingToDay"
+        :day="addingToDay"
+        @add="onAddBlock"
+        @close="addingToDay = null"
+      />
 
       <BlockEditModal
         v-if="editingBlock"
@@ -310,6 +339,33 @@ async function onBlockMove({ blockId, dayKey }) {
 }
 
 .person-filter:focus { border-color: var(--color-accent); }
+
+/* ── FAB ─────────────────────────────────────────────────────────────────── */
+.week-fab {
+  position: fixed;
+  bottom: 32px;
+  right: 32px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background-color: var(--color-accent);
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s, transform 0.1s;
+  z-index: 50;
+}
+
+.week-fab:hover {
+  background-color: color-mix(in srgb, var(--color-accent) 85%, #000);
+  transform: scale(1.06);
+}
 
 /* ── Grid desktop ────────────────────────────────────────────────────────── */
 .week-body {
