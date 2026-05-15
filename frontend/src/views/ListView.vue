@@ -56,6 +56,15 @@ function toggleCollapse(id) {
   collapsed[id] = !collapsed[id]
 }
 
+function collapseAllNodes() {
+  for (const client of clientStore.clients) {
+    collapsed[client.id] = true
+  }
+  for (const project of projectStore.projects) {
+    collapsed[project.id] = true
+  }
+}
+
 // ── Derived lists ──────────────────────────────────────────────────────────────
 const activeClients = computed(() =>
   clientStore.clients.filter(c => !c.archived)
@@ -312,6 +321,7 @@ onMounted(async () => {
       projectStore.load(),
       taskStore.load(),
     ])
+    collapseAllNodes()
   } catch (error) {
     if (!isPreviewMode) throw error
     loadPreviewData()
@@ -336,6 +346,8 @@ function loadPreviewData() {
     { id: 'task-3', project: 'project-2', name: 'Texto de manifesto', archived: false, status: 'todo' },
     { id: 'task-4', project: 'project-3', name: 'Analise competitiva', archived: false, status: 'doing' },
   ]
+
+  collapseAllNodes()
 }
 </script>
 
@@ -499,12 +511,11 @@ function loadPreviewData() {
                     <span
                       class="archive-caret"
                       :class="{ expanded: archiveExpanded.tasks[project.id] }"
-                      :style="{ color: colorForProject(project) }"
                       aria-hidden="true"
                     >
                       <span class="caret-icon" />
                     </span>
-                    <span>Arquivo</span>
+                    <span class="archive-label-text">arquivo</span>
                     <span v-if="archivedTasksForProject(project.id).length > 0" class="archive-count">
                       {{ archivedTasksForProject(project.id).length }}
                     </span>
@@ -556,12 +567,11 @@ function loadPreviewData() {
                 <span
                   class="archive-caret"
                   :class="{ expanded: archiveExpanded.projects[client.id] }"
-                  :style="{ color: colorForClient(client) }"
                   aria-hidden="true"
                 >
                   <span class="caret-icon" />
                 </span>
-                <span>Arquivo</span>
+                <span class="archive-label-text">arquivo</span>
                 <span v-if="archivedProjectsForClient(client.id).length > 0" class="archive-count">
                   {{ archivedProjectsForClient(client.id).length }}
                 </span>
@@ -613,7 +623,7 @@ function loadPreviewData() {
             <span class="archive-caret" :class="{ expanded: archiveExpanded.clients }" aria-hidden="true">
               <span class="caret-icon" />
             </span>
-            <span>Arquivo</span>
+            <span class="archive-label-text">arquivo</span>
             <span v-if="archivedClients.length > 0" class="archive-count">
               {{ archivedClients.length }}
             </span>
@@ -730,12 +740,11 @@ function loadPreviewData() {
                 <span
                   class="archive-caret"
                   :class="{ expanded: archiveExpanded.tasks[project.id] }"
-                  :style="{ color: colorForFocusedClient() }"
                   aria-hidden="true"
                 >
                   <span class="caret-icon" />
                 </span>
-                <span>Arquivo</span>
+                <span class="archive-label-text">arquivo</span>
                 <span v-if="archivedTasksForProject(project.id).length > 0" class="archive-count">
                   {{ archivedTasksForProject(project.id).length }}
                 </span>
@@ -785,12 +794,11 @@ function loadPreviewData() {
             <span
               class="archive-caret"
               :class="{ expanded: archiveExpanded.projects[focusedClient.id] }"
-              :style="{ color: colorForFocusedClient() }"
               aria-hidden="true"
             >
               <span class="caret-icon" />
             </span>
-            <span>Arquivo</span>
+            <span class="archive-label-text">arquivo</span>
             <span v-if="archivedProjectsForClient(focusedClient.id).length > 0" class="archive-count">
               {{ archivedProjectsForClient(focusedClient.id).length }}
             </span>
@@ -867,12 +875,11 @@ function loadPreviewData() {
             <span
               class="archive-caret"
               :class="{ expanded: archiveExpanded.tasks[focusedProject.id] }"
-              :style="{ color: colorForFocusedProject() }"
               aria-hidden="true"
             >
               <span class="caret-icon" />
             </span>
-            <span>Arquivo</span>
+            <span class="archive-label-text">arquivo</span>
             <span v-if="archivedTasksForProject(focusedProject.id).length > 0" class="archive-count">
               {{ archivedTasksForProject(focusedProject.id).length }}
             </span>
@@ -919,16 +926,21 @@ function loadPreviewData() {
 }
 
 .back-btn {
+  width: 36px;
+  min-width: 36px;
   background: none;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-block);
-  padding: 2px 10px;
+  padding: 2px 0;
   font-size: 18px;
   cursor: pointer;
   color: var(--color-text-muted);
   line-height: 1.4;
   font-family: var(--font-base);
   transition: color 0.15s, border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .back-btn:hover {
@@ -942,6 +954,7 @@ function loadPreviewData() {
   color: var(--color-text);
   display: flex;
   align-items: center;
+  padding-left: calc(var(--list-marker-size) + 11px);
 }
 
 /* ── List nodes ───────────────────────────────────────────────────────────── */
@@ -1030,7 +1043,7 @@ function loadPreviewData() {
 
 .node-label {
   flex: 1;
-  font-size: 15px;
+  font-size: 16.5px;
   font-weight: 400;
   color: #000;
   cursor: default;
@@ -1049,7 +1062,7 @@ function loadPreviewData() {
 .node-input {
   width: 100%;
   font-family: var(--font-base);
-  font-size: 15px;
+  font-size: 16.5px;
   font-weight: 400;
   color: #000;
   background: var(--color-bg);
@@ -1088,7 +1101,7 @@ function loadPreviewData() {
 /* ── Archive zone ─────────────────────────────────────────────────────────── */
 .archive-zone {
   margin-left: var(--list-indent);
-  margin-top: 4px;
+  margin-top: 0;
   border-radius: var(--radius-block);
   border: 1px dashed transparent;
   transition: border-color 0.15s, background-color 0.15s;
@@ -1096,7 +1109,7 @@ function loadPreviewData() {
 
 .archive-zone--top {
   margin-left: 0;
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .archive-zone--over {
@@ -1111,7 +1124,7 @@ function loadPreviewData() {
   background: none;
   border: none;
   font-family: var(--font-base);
-  font-size: 15px;
+  font-size: 16.5px;
   font-weight: 400;
   line-height: 1.2;
   color: #b7aa9d;
@@ -1133,6 +1146,12 @@ function loadPreviewData() {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  color: inherit;
+}
+
+.archive-label-text {
+  font-style: italic;
+  text-transform: lowercase;
 }
 
 .archive-count {
@@ -1161,7 +1180,7 @@ function loadPreviewData() {
 
 .archived-label {
   flex: 1;
-  font-size: 15px;
+  font-size: 16.5px;
   font-weight: 400;
   line-height: 1.2;
   color: #b7aa9d;
