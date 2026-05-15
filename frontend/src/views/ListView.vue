@@ -1,5 +1,6 @@
 <script setup>
 import { ref, reactive, computed, onMounted, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { useClientStore } from '../stores/useClientStore'
 import { useProjectStore } from '../stores/useProjectStore'
 import { useTaskStore } from '../stores/useTaskStore'
@@ -9,9 +10,11 @@ import {
   createTask, updateTask, archiveTask, unarchiveTask,
 } from '../services/pb'
 
+const route = useRoute()
 const clientStore  = useClientStore()
 const projectStore = useProjectStore()
 const taskStore    = useTaskStore()
+const isPreviewMode = import.meta.env.DEV && route.query.preview === '1'
 
 // ── Focus path (breadcrumb) ───────────────────────────────────────────────────
 // [] = top level (clients)
@@ -216,6 +219,23 @@ function zoomIntoProject(clientId, projectId) {
   focusPath.value = [{ type: 'client', id: clientId }, { type: 'project', id: projectId }]
 }
 
+function colorForClient(client) {
+  return client?.color ?? 'var(--color-text-muted)'
+}
+
+function colorForProject(project) {
+  const client = clientStore.clients.find(c => c.id === project?.client)
+  return colorForClient(client)
+}
+
+function colorForFocusedClient() {
+  return colorForClient(focusedClient.value)
+}
+
+function colorForFocusedProject() {
+  return colorForProject(focusedProject.value)
+}
+
 // ── Archive drag and drop ─────────────────────────────────────────────────────
 const draggingItem = ref(null) // { type, id }
 const dragOverArchive = ref(null) // type key
@@ -286,12 +306,37 @@ async function fabCreate() {
 
 // ── Load data ─────────────────────────────────────────────────────────────────
 onMounted(async () => {
-  await Promise.all([
-    clientStore.load(),
-    projectStore.load(),
-    taskStore.load(),
-  ])
+  try {
+    await Promise.all([
+      clientStore.load(),
+      projectStore.load(),
+      taskStore.load(),
+    ])
+  } catch (error) {
+    if (!isPreviewMode) throw error
+    loadPreviewData()
+  }
 })
+
+function loadPreviewData() {
+  clientStore.clients = [
+    { id: 'client-1', name: 'Cliente Alpha', color: '#111111', archived: false },
+    { id: 'client-2', name: 'Cliente Beta', color: '#444444', archived: false },
+  ]
+
+  projectStore.projects = [
+    { id: 'project-1', client: 'client-1', name: 'Reposicionamento', archived: false, status: 'active' },
+    { id: 'project-2', client: 'client-1', name: 'Campanha de lancamento', archived: false, status: 'active' },
+    { id: 'project-3', client: 'client-2', name: 'Diagnostico', archived: false, status: 'active' },
+  ]
+
+  taskStore.tasks = [
+    { id: 'task-1', project: 'project-1', name: 'Entrevistas com stakeholders', archived: false, status: 'doing' },
+    { id: 'task-2', project: 'project-1', name: 'Mapa de narrativa', archived: false, status: 'todo' },
+    { id: 'task-3', project: 'project-2', name: 'Texto de manifesto', archived: false, status: 'todo' },
+    { id: 'task-4', project: 'project-3', name: 'Analise competitiva', archived: false, status: 'doing' },
+  ]
+}
 </script>
 
 <template>
@@ -302,7 +347,6 @@ onMounted(async () => {
       <button class="back-btn" @click="zoomOut">‹</button>
       <span class="breadcrumb-title">
         <template v-if="focusPath.length === 1 && focusedClient">
-          <span class="client-dot" :style="{ background: focusedClient.color }" />
           {{ focusedClient.name }}
         </template>
         <template v-else-if="focusPath.length === 2 && focusedProject">
@@ -311,7 +355,7 @@ onMounted(async () => {
       </span>
     </div>
 
-    <div class="list-body">
+    <div class="list-body" :class="{ 'list-body--focused': focusPath.length > 0 }">
 
       <!-- ── Level 0: Clients ─────────────────────────────────────────────── -->
       <template v-if="currentLevel === 0">
@@ -326,11 +370,11 @@ onMounted(async () => {
             <button
               class="collapse-btn"
               :class="{ expanded: !collapsed[client.id] }"
+              :style="{ color: colorForClient(client) }"
               @click="toggleCollapse(client.id)"
             >
-              {{ collapsed[client.id] ? '▶' : '▼' }}
+              <span class="caret-icon" aria-hidden="true" />
             </button>
-            <span class="client-dot" :style="{ background: client.color }" />
             <span
               v-if="editing?.id === client.id && editing?.type === 'client'"
               class="node-input-wrap"
@@ -345,7 +389,7 @@ onMounted(async () => {
             </span>
             <span
               v-else
-              class="node-label"
+              class="node-label node-label--client"
               @dblclick="zoomIn('client', client.id)"
               @click.stop
             >
@@ -367,9 +411,10 @@ onMounted(async () => {
                 <button
                   class="collapse-btn"
                   :class="{ expanded: !collapsed[project.id] }"
+                  :style="{ color: colorForProject(project) }"
                   @click="toggleCollapse(project.id)"
                 >
-                  {{ collapsed[project.id] ? '▶' : '▼' }}
+                  <span class="caret-icon" aria-hidden="true" />
                 </button>
                 <span
                   v-if="editing?.id === project.id && editing?.type === 'project'"
@@ -404,7 +449,7 @@ onMounted(async () => {
                   @dragstart.stop="onDragStart($event, 'task', task.id)"
                 >
                   <div class="node-row">
-                    <span class="task-bullet" />
+                    <span class="node-slot" aria-hidden="true" />
                     <span
                       v-if="editing?.id === task.id && editing?.type === 'task'"
                       class="node-input-wrap"
@@ -425,7 +470,7 @@ onMounted(async () => {
                 <!-- New task inline input -->
                 <div v-if="editing?.type === 'new-task' && editing?.parentId === project.id" class="list-node list-node--task">
                   <div class="node-row">
-                    <span class="task-bullet" />
+                    <span class="node-slot" aria-hidden="true" />
                     <span class="node-input-wrap">
                       <input
                         ref="editInputRef"
@@ -451,7 +496,15 @@ onMounted(async () => {
                     class="archive-toggle"
                     @click="archiveExpanded.tasks[project.id] = !archiveExpanded.tasks[project.id]"
                   >
-                    {{ archiveExpanded.tasks[project.id] ? '▼' : '▶' }} Arquivo
+                    <span
+                      class="archive-caret"
+                      :class="{ expanded: archiveExpanded.tasks[project.id] }"
+                      :style="{ color: colorForProject(project) }"
+                      aria-hidden="true"
+                    >
+                      <span class="caret-icon" />
+                    </span>
+                    <span>Arquivo</span>
                     <span v-if="archivedTasksForProject(project.id).length > 0" class="archive-count">
                       {{ archivedTasksForProject(project.id).length }}
                     </span>
@@ -462,7 +515,7 @@ onMounted(async () => {
                       :key="task.id"
                       class="archived-item"
                     >
-                      <span class="task-bullet archived" />
+                      <span class="node-slot" aria-hidden="true" />
                       <span class="archived-label">{{ task.name }}</span>
                       <button class="unarchive-btn" @click="unarchive('task', task.id)">↩</button>
                     </div>
@@ -474,7 +527,7 @@ onMounted(async () => {
             <!-- New project inline input -->
             <div v-if="editing?.type === 'new-project' && editing?.parentId === client.id" class="list-node list-node--project">
               <div class="node-row">
-                <span class="collapse-btn" style="visibility:hidden">▼</span>
+                <span class="node-slot" aria-hidden="true" />
                 <span class="node-input-wrap">
                   <input
                     ref="editInputRef"
@@ -500,7 +553,15 @@ onMounted(async () => {
                 class="archive-toggle"
                 @click="archiveExpanded.projects[client.id] = !archiveExpanded.projects[client.id]"
               >
-                {{ archiveExpanded.projects[client.id] ? '▼' : '▶' }} Arquivo
+                <span
+                  class="archive-caret"
+                  :class="{ expanded: archiveExpanded.projects[client.id] }"
+                  :style="{ color: colorForClient(client) }"
+                  aria-hidden="true"
+                >
+                  <span class="caret-icon" />
+                </span>
+                <span>Arquivo</span>
                 <span v-if="archivedProjectsForClient(client.id).length > 0" class="archive-count">
                   {{ archivedProjectsForClient(client.id).length }}
                 </span>
@@ -511,7 +572,7 @@ onMounted(async () => {
                   :key="proj.id"
                   class="archived-item"
                 >
-                  <span class="collapse-btn" style="visibility:hidden">▶</span>
+                  <span class="node-slot" aria-hidden="true" />
                   <span class="archived-label">{{ proj.name }}</span>
                   <button class="unarchive-btn" @click="unarchive('project', proj.id)">↩</button>
                 </div>
@@ -524,7 +585,6 @@ onMounted(async () => {
         <div v-if="editing?.type === 'new-client'" class="list-node">
           <div class="node-row">
             <span class="collapse-btn" style="visibility:hidden">▼</span>
-            <span class="client-dot" style="background: var(--color-border)" />
             <span class="node-input-wrap">
               <input
                 ref="editInputRef"
@@ -550,7 +610,10 @@ onMounted(async () => {
             class="archive-toggle"
             @click="archiveExpanded.clients = !archiveExpanded.clients"
           >
-            {{ archiveExpanded.clients ? '▼' : '▶' }} Arquivo
+            <span class="archive-caret" :class="{ expanded: archiveExpanded.clients }" aria-hidden="true">
+              <span class="caret-icon" />
+            </span>
+            <span>Arquivo</span>
             <span v-if="archivedClients.length > 0" class="archive-count">
               {{ archivedClients.length }}
             </span>
@@ -561,7 +624,7 @@ onMounted(async () => {
               :key="client.id"
               class="archived-item"
             >
-              <span class="client-dot" :style="{ background: client.color }" />
+              <span class="node-slot" aria-hidden="true" />
               <span class="archived-label">{{ client.name }}</span>
               <button class="unarchive-btn" @click="unarchive('client', client.id)">↩</button>
             </div>
@@ -582,9 +645,10 @@ onMounted(async () => {
             <button
               class="collapse-btn"
               :class="{ expanded: !collapsed[project.id] }"
+              :style="{ color: colorForFocusedClient() }"
               @click="toggleCollapse(project.id)"
             >
-              {{ collapsed[project.id] ? '▶' : '▼' }}
+              <span class="caret-icon" aria-hidden="true" />
             </button>
             <span
               v-if="editing?.id === project.id && editing?.type === 'project'"
@@ -618,7 +682,7 @@ onMounted(async () => {
               @dragstart.stop="onDragStart($event, 'task', task.id)"
             >
               <div class="node-row">
-                <span class="task-bullet" />
+                <span class="node-slot" aria-hidden="true" />
                 <span
                   v-if="editing?.id === task.id && editing?.type === 'task'"
                   class="node-input-wrap"
@@ -638,7 +702,7 @@ onMounted(async () => {
 
             <div v-if="editing?.type === 'new-task' && editing?.parentId === project.id" class="list-node list-node--task">
               <div class="node-row">
-                <span class="task-bullet" />
+                <span class="node-slot" aria-hidden="true" />
                 <span class="node-input-wrap">
                   <input
                     ref="editInputRef"
@@ -663,7 +727,15 @@ onMounted(async () => {
                 class="archive-toggle"
                 @click="archiveExpanded.tasks[project.id] = !archiveExpanded.tasks[project.id]"
               >
-                {{ archiveExpanded.tasks[project.id] ? '▼' : '▶' }} Arquivo
+                <span
+                  class="archive-caret"
+                  :class="{ expanded: archiveExpanded.tasks[project.id] }"
+                  :style="{ color: colorForFocusedClient() }"
+                  aria-hidden="true"
+                >
+                  <span class="caret-icon" />
+                </span>
+                <span>Arquivo</span>
                 <span v-if="archivedTasksForProject(project.id).length > 0" class="archive-count">
                   {{ archivedTasksForProject(project.id).length }}
                 </span>
@@ -674,7 +746,7 @@ onMounted(async () => {
                   :key="task.id"
                   class="archived-item"
                 >
-                  <span class="task-bullet archived" />
+                  <span class="node-slot" aria-hidden="true" />
                   <span class="archived-label">{{ task.name }}</span>
                   <button class="unarchive-btn" @click="unarchive('task', task.id)">↩</button>
                 </div>
@@ -685,7 +757,7 @@ onMounted(async () => {
 
         <div v-if="editing?.type === 'new-project' && editing?.parentId === focusedClient.id" class="list-node">
           <div class="node-row">
-            <span class="collapse-btn" style="visibility:hidden">▼</span>
+            <span class="node-slot" aria-hidden="true" />
             <span class="node-input-wrap">
               <input
                 ref="editInputRef"
@@ -710,7 +782,15 @@ onMounted(async () => {
             class="archive-toggle"
             @click="archiveExpanded.projects[focusedClient.id] = !archiveExpanded.projects[focusedClient.id]"
           >
-            {{ archiveExpanded.projects[focusedClient.id] ? '▼' : '▶' }} Arquivo
+            <span
+              class="archive-caret"
+              :class="{ expanded: archiveExpanded.projects[focusedClient.id] }"
+              :style="{ color: colorForFocusedClient() }"
+              aria-hidden="true"
+            >
+              <span class="caret-icon" />
+            </span>
+            <span>Arquivo</span>
             <span v-if="archivedProjectsForClient(focusedClient.id).length > 0" class="archive-count">
               {{ archivedProjectsForClient(focusedClient.id).length }}
             </span>
@@ -721,6 +801,7 @@ onMounted(async () => {
               :key="proj.id"
               class="archived-item"
             >
+              <span class="node-slot" aria-hidden="true" />
               <span class="archived-label">{{ proj.name }}</span>
               <button class="unarchive-btn" @click="unarchive('project', proj.id)">↩</button>
             </div>
@@ -738,7 +819,7 @@ onMounted(async () => {
           @dragstart="onDragStart($event, 'task', task.id)"
         >
           <div class="node-row">
-            <span class="task-bullet" />
+            <span class="node-slot" aria-hidden="true" />
             <span
               v-if="editing?.id === task.id && editing?.type === 'task'"
               class="node-input-wrap"
@@ -758,7 +839,7 @@ onMounted(async () => {
 
         <div v-if="editing?.type === 'new-task' && editing?.parentId === focusedProject.id" class="list-node">
           <div class="node-row">
-            <span class="task-bullet" />
+            <span class="node-slot" aria-hidden="true" />
             <span class="node-input-wrap">
               <input
                 ref="editInputRef"
@@ -783,7 +864,15 @@ onMounted(async () => {
             class="archive-toggle"
             @click="archiveExpanded.tasks[focusedProject.id] = !archiveExpanded.tasks[focusedProject.id]"
           >
-            {{ archiveExpanded.tasks[focusedProject.id] ? '▼' : '▶' }} Arquivo
+            <span
+              class="archive-caret"
+              :class="{ expanded: archiveExpanded.tasks[focusedProject.id] }"
+              :style="{ color: colorForFocusedProject() }"
+              aria-hidden="true"
+            >
+              <span class="caret-icon" />
+            </span>
+            <span>Arquivo</span>
             <span v-if="archivedTasksForProject(focusedProject.id).length > 0" class="archive-count">
               {{ archivedTasksForProject(focusedProject.id).length }}
             </span>
@@ -794,7 +883,7 @@ onMounted(async () => {
               :key="task.id"
               class="archived-item"
             >
-              <span class="task-bullet archived" />
+              <span class="node-slot" aria-hidden="true" />
               <span class="archived-label">{{ task.name }}</span>
               <button class="unarchive-btn" @click="unarchive('task', task.id)">↩</button>
             </div>
@@ -812,6 +901,8 @@ onMounted(async () => {
 
 <style scoped>
 .list-view {
+  --list-indent: 24px;
+  --list-marker-size: 16px;
   position: relative;
   max-width: 720px;
   margin: 0 auto;
@@ -824,6 +915,7 @@ onMounted(async () => {
   align-items: center;
   gap: 10px;
   margin-bottom: 20px;
+  padding-left: 6px;
 }
 
 .back-btn {
@@ -850,7 +942,6 @@ onMounted(async () => {
   color: var(--color-text);
   display: flex;
   align-items: center;
-  gap: 8px;
 }
 
 /* ── List nodes ───────────────────────────────────────────────────────────── */
@@ -860,25 +951,29 @@ onMounted(async () => {
   gap: 2px;
 }
 
+.list-body--focused {
+  padding-left: 52px;
+}
+
 .list-node {
   border-radius: var(--radius-block);
 }
 
 .list-node--project {
-  margin-left: 24px;
+  margin-left: var(--list-indent);
 }
 
 .list-node--task {
-  margin-left: 24px;
+  margin-left: var(--list-indent);
 }
 
 .node-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 6px;
+  gap: 5px;
+  padding: 2px 6px;
   border-radius: var(--radius-block);
-  min-height: 32px;
+  min-height: 26px;
   transition: background-color 0.1s;
 }
 
@@ -894,49 +989,57 @@ onMounted(async () => {
 .collapse-btn {
   background: none;
   border: none;
-  font-size: 10px;
+  width: var(--list-marker-size);
+  min-width: var(--list-marker-size);
   cursor: pointer;
-  color: var(--color-text-muted);
-  padding: 2px 4px;
+  padding: 0;
   border-radius: 2px;
-  line-height: 1;
+  line-height: 0;
   flex-shrink: 0;
   transition: color 0.12s;
 }
 
 .collapse-btn:hover {
-  color: var(--color-text);
+  filter: brightness(0.82);
 }
 
-.client-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
+.caret-icon {
+  width: 0;
+  height: 0;
+  display: inline-block;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid currentColor;
+  transform: rotate(0deg);
+  transform-origin: 45% 50%;
+  transition: transform 0.12s;
+}
+
+.collapse-btn.expanded .caret-icon,
+.archive-caret.expanded .caret-icon {
+  transform: rotate(90deg);
+}
+
+.node-slot {
+  width: var(--list-marker-size);
+  min-width: var(--list-marker-size);
+  height: 1px;
   flex-shrink: 0;
   display: inline-block;
-}
-
-.task-bullet {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-text-muted);
-  flex-shrink: 0;
-  margin-left: 8px;
-  display: inline-block;
-}
-
-.task-bullet.archived {
-  background: var(--color-border);
 }
 
 .node-label {
   flex: 1;
-  font-size: 14px;
-  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 400;
+  color: #000;
   cursor: default;
   user-select: none;
-  line-height: 1.4;
+  line-height: 1.2;
+}
+
+.node-label--client {
+  font-weight: 700;
 }
 
 .node-input-wrap {
@@ -946,14 +1049,15 @@ onMounted(async () => {
 .node-input {
   width: 100%;
   font-family: var(--font-base);
-  font-size: 14px;
-  color: var(--color-text);
+  font-size: 15px;
+  font-weight: 400;
+  color: #000;
   background: var(--color-bg);
   border: 1px solid var(--color-accent);
   border-radius: var(--radius-block);
   padding: 2px 6px;
   outline: none;
-  line-height: 1.4;
+  line-height: 1.2;
 }
 
 .edit-btn {
@@ -977,13 +1081,13 @@ onMounted(async () => {
 .node-children {
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  margin-top: 1px;
+  gap: 0;
+  margin-top: 0;
 }
 
 /* ── Archive zone ─────────────────────────────────────────────────────────── */
 .archive-zone {
-  margin-left: 24px;
+  margin-left: var(--list-indent);
   margin-top: 4px;
   border-radius: var(--radius-block);
   border: 1px dashed transparent;
@@ -1003,25 +1107,37 @@ onMounted(async () => {
 .archive-toggle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   background: none;
   border: none;
   font-family: var(--font-base);
-  font-size: 12px;
-  color: var(--color-text-muted);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #b7aa9d;
   cursor: pointer;
-  padding: 4px 6px;
+  padding: 2px 6px;
   border-radius: var(--radius-block);
   transition: color 0.12s;
 }
 
 .archive-toggle:hover {
-  color: var(--color-text);
+  color: #9b8d80;
+}
+
+.archive-caret {
+  width: var(--list-marker-size);
+  min-width: var(--list-marker-size);
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .archive-count {
   background: var(--color-border);
-  color: var(--color-text-muted);
+  color: #9b8d80;
   font-size: 10px;
   border-radius: 10px;
   padding: 0 5px;
@@ -1038,17 +1154,19 @@ onMounted(async () => {
 .archived-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   padding: 3px 6px;
   border-radius: var(--radius-block);
 }
 
 .archived-label {
   flex: 1;
-  font-size: 13px;
-  color: var(--color-text-muted);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #b7aa9d;
   text-decoration: line-through;
-  text-decoration-color: var(--color-border);
+  text-decoration-color: #d8ccc1;
 }
 
 .unarchive-btn {
@@ -1100,9 +1218,8 @@ onMounted(async () => {
 
 /* ── Mobile ───────────────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  .list-node--project { margin-left: 16px; }
-  .list-node--task    { margin-left: 16px; }
-  .archive-zone       { margin-left: 16px; }
+  .list-view { --list-indent: 24px; }
+  .list-body--focused { padding-left: 52px; }
   .fab { bottom: 20px; right: 20px; }
 }
 </style>
