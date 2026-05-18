@@ -4,11 +4,10 @@ import { computed } from 'vue'
 const props = defineProps({
   tasks: { type: Array, default: () => [] },
   clients: { type: Array, default: () => [] },
+  taskAllocatedHours: { type: Object, default: () => ({}) },
 })
 
-defineEmits(['drag-start'])
-
-// Agrupa tarefas por cliente → projeto
+// Agrupa tarefas por cliente -> projeto para espelhar a visualizacao da Lista.
 const grouped = computed(() => {
   const map = new Map()
 
@@ -17,10 +16,10 @@ const grouped = computed(() => {
   }
 
   for (const task of props.tasks) {
-    const project  = task.expand?.project
+    const project = task.expand?.project
     if (!project) continue
-    const clientId = project.client
-    const client   = props.clients.find(c => c.id === clientId)
+
+    const client = props.clients.find(c => c.id === project.client)
     if (!client) continue
 
     if (!map.has(client.id)) {
@@ -31,11 +30,11 @@ const grouped = computed(() => {
     if (!clientEntry.projects.has(project.id)) {
       clientEntry.projects.set(project.id, { project, tasks: [] })
     }
+
     clientEntry.projects.get(project.id).tasks.push(task)
   }
 
-  // Filtra clientes sem tarefas
-  return [...map.values()].filter(c => c.projects.size > 0)
+  return [...map.values()].filter(entry => entry.projects.size > 0)
 })
 
 function onDragStart(e, task) {
@@ -46,16 +45,13 @@ function onDragStart(e, task) {
 
 <template>
   <aside class="sidebar">
-    <div class="sidebar-title">Tarefas</div>
-
     <div v-if="grouped.length === 0" class="sidebar-empty">
       Nenhuma tarefa ativa.
     </div>
 
     <div v-for="entry in grouped" :key="entry.client.id" class="client-group">
-      <div class="client-label">
-        <span class="client-dot" :style="{ backgroundColor: entry.client.color }" />
-        {{ entry.client.name }}
+      <div class="client-row">
+        <span class="client-label">{{ entry.client.name }}</span>
       </div>
 
       <div
@@ -63,20 +59,21 @@ function onDragStart(e, task) {
         :key="proj.project.id"
         class="project-group"
       >
-        <div class="project-label">{{ proj.project.name }}</div>
+        <div class="project-row">
+          <span class="node-slot" aria-hidden="true" />
+          <span class="project-label">{{ proj.project.name }}</span>
+        </div>
 
         <div
           v-for="task in proj.tasks"
           :key="task.id"
-          class="task-item"
+          class="task-row"
+          :class="{ 'is-allocated': (taskAllocatedHours[task.id] || 0) > 0 }"
           draggable="true"
           @dragstart="onDragStart($event, task)"
         >
-          <span
-            class="task-dot"
-            :style="{ backgroundColor: entry.client.color }"
-          />
-          {{ task.name }}
+          <span class="node-slot" aria-hidden="true" />
+          <span class="task-label">{{ task.name }}</span>
         </div>
       </div>
     </div>
@@ -85,86 +82,82 @@ function onDragStart(e, task) {
 
 <style scoped>
 .sidebar {
+  --list-indent: 24px;
+  --list-marker-size: 16px;
   width: var(--sidebar-width);
   flex-shrink: 0;
   border-right: 1px solid var(--color-border);
   overflow-y: auto;
-  padding: var(--spacing-block) 0;
-}
-
-.sidebar-title {
-  font-size: 12px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-muted);
-  padding: 0 var(--spacing-block) 10px;
+  padding: 10px 6px 14px;
 }
 
 .sidebar-empty {
-  font-size: 13px;
-  color: var(--color-text-muted);
-  padding: 0 var(--spacing-block);
+  padding: 2px 6px;
+  font-size: 16.5px;
+  line-height: 1.2;
+  color: #b7aa9d;
 }
 
 .client-group {
-  margin-bottom: 8px;
-}
-
-.client-label {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 4px var(--spacing-block);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.client-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
+  flex-direction: column;
 }
 
 .project-group {
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  margin-left: var(--list-indent);
 }
 
-.project-label {
-  padding: 2px var(--spacing-block) 2px calc(var(--spacing-block) + 15px);
-  font-size: 12px;
-  color: var(--color-text-muted);
-  font-weight: 400;
-}
-
-.task-item {
+.client-row,
+.project-row,
+.task-row {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 5px var(--spacing-block) 5px calc(var(--spacing-block) + 15px);
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--color-text);
-  cursor: grab;
+  gap: 5px;
+  min-height: 26px;
+  padding: 2px 6px;
   border-radius: var(--radius-block);
-  transition: background-color 0.12s;
 }
 
-.task-item:hover {
+.task-row {
+  margin-left: var(--list-indent);
+  cursor: grab;
+  transition: background-color 0.12s, opacity 0.12s;
+}
+
+.task-row:hover {
   background-color: var(--color-surface);
 }
 
-.task-item:active {
+.task-row:active {
   cursor: grabbing;
 }
 
-.task-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
+.node-slot {
+  width: var(--list-marker-size);
+  min-width: var(--list-marker-size);
+  height: 1px;
   flex-shrink: 0;
-  opacity: 1;
+  display: inline-block;
+}
+
+.client-label {
+  font-size: 16.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #000;
+}
+
+.project-label,
+.task-label {
+  font-size: 16.5px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: #000;
+}
+
+.task-row.is-allocated {
+  opacity: 0.42;
 }
 </style>

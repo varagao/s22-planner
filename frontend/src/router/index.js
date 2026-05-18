@@ -52,9 +52,11 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore()
   const isListPreview = import.meta.env.DEV && to.name === 'lista' && to.query.preview === '1'
+  const isWeekPreview = import.meta.env.DEV && to.name === 'week' && to.query.preview === '1'
 
   if (to.meta.public) return true
   if (isListPreview) return true
+  if (isWeekPreview) return true
 
   // Valida token contra o servidor — JWT local pode parecer válido mas ser rejeitado
   await auth.refresh()
