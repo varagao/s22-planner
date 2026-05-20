@@ -7,7 +7,7 @@ import { useTaskStore } from '../stores/useTaskStore'
 import {
   createClient, updateClient, archiveClient, unarchiveClient,
   createProject, updateProject, archiveProject, unarchiveProject,
-  createTask, updateTask, archiveTask, unarchiveTask,
+  createTask, updateTask, archiveTask, unarchiveTask, hasTimeBlocks,
 } from '../services/pb'
 
 const route = useRoute()
@@ -67,24 +67,33 @@ function collapseAllNodes() {
 
 // ── Derived lists ──────────────────────────────────────────────────────────────
 const activeClients = computed(() =>
-  clientStore.clients.filter(c => !c.archived)
+  sortItems(clientStore.clients.filter(c => !c.archived))
 )
 const archivedClients = computed(() =>
-  clientStore.clients.filter(c => c.archived)
+  sortItems(clientStore.clients.filter(c => c.archived))
 )
 
 function projectsForClient(clientId) {
-  return projectStore.projects.filter(p => p.client === clientId && !p.archived)
+  return sortItems(projectStore.projects.filter(p => p.client === clientId && !p.archived))
 }
 function archivedProjectsForClient(clientId) {
-  return projectStore.projects.filter(p => p.client === clientId && p.archived)
+  return sortItems(projectStore.projects.filter(p => p.client === clientId && p.archived))
 }
 
 function tasksForProject(projectId) {
-  return taskStore.tasks.filter(t => t.project === projectId && !t.archived)
+  return sortItems(taskStore.tasks.filter(t => t.project === projectId && !t.archived))
 }
 function archivedTasksForProject(projectId) {
-  return taskStore.tasks.filter(t => t.project === projectId && t.archived)
+  return sortItems(taskStore.tasks.filter(t => t.project === projectId && t.archived))
+}
+
+function sortItems(items) {
+  return [...items].sort((a, b) => {
+    const aOrder = Number.isFinite(a.sort_order) ? a.sort_order : Number.MAX_SAFE_INTEGER
+    const bOrder = Number.isFinite(b.sort_order) ? b.sort_order : Number.MAX_SAFE_INTEGER
+    if (aOrder !== bOrder) return aOrder - bOrder
+    return (a.name ?? '').localeCompare(b.name ?? '', 'pt-BR')
+  })
 }
 
 // Filtered to current zoom level
@@ -136,13 +145,13 @@ async function commitEdit() {
   if (!name) { editing.value = null; return }
 
   if (type === 'new-client') {
-    const c = await createClient({ name, color: randomColor() })
+    const c = await createClient({ name, color: randomColor(), sort_order: nextSortOrder('client') })
     clientStore.clients.push(c)
   } else if (type === 'new-project') {
-    const p = await createProject({ name, client: parentId, status: 'active' })
+    const p = await createProject({ name, client: parentId, status: 'active', sort_order: nextSortOrder('project', parentId) })
     projectStore.projects.push(p)
   } else if (type === 'new-task') {
-    const t = await createTask({ name, project: parentId, status: 'todo', estimated_hours: 1 })
+    const t = await createTask({ name, project: parentId, status: 'todo', estimated_hours: 1, sort_order: nextSortOrder('task', parentId) })
     taskStore.tasks.push(t)
   } else if (type === 'client') {
     const updated = await updateClient(id, { name })
@@ -197,7 +206,7 @@ async function handleTab() {
 
   if (type === 'new-client' && name) {
     // Cria o cliente e abre input de projeto aninhado na mesma view (sem zoomIn)
-    const c = await createClient({ name, color: randomColor() })
+    const c = await createClient({ name, color: randomColor(), sort_order: nextSortOrder('client') })
     clientStore.clients.push(c)
     collapsed[c.id] = false
     editing.value = null
@@ -206,7 +215,7 @@ async function handleTab() {
   } else if (type === 'new-project' && name) {
     // Cria o projeto e abre input de tarefa aninhado na mesma view (sem zoomIn)
     const clientId = parentId ?? focusedClient.value?.id
-    const p = await createProject({ name, client: clientId, status: 'active' })
+    const p = await createProject({ name, client: clientId, status: 'active', sort_order: nextSortOrder('project', clientId) })
     projectStore.projects.push(p)
     collapsed[p.id] = false
     editing.value = null
@@ -247,12 +256,44 @@ function colorForFocusedProject() {
 
 // ── Archive drag and drop ─────────────────────────────────────────────────────
 const draggingItem = ref(null) // { type, id }
+const dragOverItem = ref(null)
+const dragOverPosition = ref('before')
 const dragOverArchive = ref(null) // type key
 
 function onDragStart(e, type, id) {
   draggingItem.value = { type, id }
   e.dataTransfer.effectAllowed = 'move'
   e.dataTransfer.setData('text/plain', `${type}:${id}`)
+}
+
+function onDragEnd() {
+  draggingItem.value = null
+  dragOverItem.value = null
+  dragOverPosition.value = 'before'
+  dragOverArchive.value = null
+}
+
+function onItemDragOver(e, type, id) {
+  if (!draggingItem.value || draggingItem.value.type !== type || draggingItem.value.id === id) return
+  e.preventDefault()
+  const rect = e.currentTarget.getBoundingClientRect()
+  dragOverItem.value = `${type}:${id}`
+  dragOverPosition.value = e.clientY > rect.top + rect.height / 2 ? 'after' : 'before'
+}
+
+function onItemDragLeave() {
+  dragOverItem.value = null
+  dragOverPosition.value = 'before'
+}
+
+async function onItemDrop(e, type, targetId, parentId = null) {
+  e.preventDefault()
+  dragOverItem.value = null
+  const dragged = draggingItem.value
+  draggingItem.value = null
+  if (!dragged || dragged.type !== type || dragged.id === targetId) return
+  await reorderItem(type, dragged.id, targetId, parentId, dragOverPosition.value)
+  dragOverPosition.value = 'before'
 }
 
 function onArchiveDragOver(e, zoneKey) {
@@ -284,6 +325,68 @@ async function onArchiveDrop(e, type) {
     const idx = taskStore.tasks.findIndex(t => t.id === id)
     if (idx !== -1) taskStore.tasks[idx] = { ...taskStore.tasks[idx], archived: true }
   }
+}
+
+function siblingItems(type, parentId = null) {
+  if (type === 'client') return activeClients.value
+  if (type === 'project') return projectsForClient(parentId)
+  if (type === 'task') return tasksForProject(parentId)
+  return []
+}
+
+function storeForType(type) {
+  if (type === 'client') return clientStore.clients
+  if (type === 'project') return projectStore.projects
+  return taskStore.tasks
+}
+
+function updaterForType(type) {
+  if (type === 'client') return updateClient
+  if (type === 'project') return updateProject
+  return updateTask
+}
+
+async function reorderItem(type, draggedId, targetId, parentId = null, position = 'before') {
+  const items = siblingItems(type, parentId)
+  const from = items.findIndex(item => item.id === draggedId)
+  const to = items.findIndex(item => item.id === targetId)
+  if (from === -1 || to === -1) return
+
+  const reordered = [...items]
+  const [moved] = reordered.splice(from, 1)
+  const targetIndex = reordered.findIndex(item => item.id === targetId)
+  reordered.splice(position === 'after' ? targetIndex + 1 : targetIndex, 0, moved)
+  await persistSortOrder(type, reordered)
+}
+
+async function persistSortOrder(type, items) {
+  const update = updaterForType(type)
+  const collection = storeForType(type)
+
+  for (const item of items) {
+    const idx = collection.findIndex(record => record.id === item.id)
+    if (idx !== -1) collection[idx] = { ...collection[idx], sort_order: items.findIndex(i => i.id === item.id) + 1 }
+  }
+
+  if (isPreviewMode) return
+
+  await Promise.all(items.map((item, index) => update(item.id, { sort_order: index + 1 })))
+}
+
+function nextSortOrder(type, parentId = null) {
+  const items = siblingItems(type, parentId)
+  const max = items.reduce((value, item) => Math.max(value, item.sort_order || 0), 0)
+  return max + 1
+}
+
+async function removeTask(id) {
+  const blocked = await hasTimeBlocks(id)
+  if (blocked) {
+    window.alert('Esta tarefa possui blocos de tempo alocados e não pode ser excluída.')
+    return
+  }
+
+  await taskStore.remove(id)
 }
 
 async function unarchive(type, id) {
@@ -375,8 +478,16 @@ function loadPreviewData() {
           v-for="client in visibleClients"
           :key="client.id"
           class="list-node"
+          :class="{
+            'list-node--drop-before': dragOverItem === `client:${client.id}` && dragOverPosition === 'before',
+            'list-node--drop-after': dragOverItem === `client:${client.id}` && dragOverPosition === 'after',
+          }"
           draggable="true"
           @dragstart="onDragStart($event, 'client', client.id)"
+          @dragend="onDragEnd"
+          @dragover="onItemDragOver($event, 'client', client.id)"
+          @dragleave="onItemDragLeave"
+          @drop="onItemDrop($event, 'client', client.id)"
         >
           <div class="node-row">
             <button
@@ -416,8 +527,16 @@ function loadPreviewData() {
               v-for="project in projectsForClient(client.id)"
               :key="project.id"
               class="list-node list-node--project"
+              :class="{
+                'list-node--drop-before': dragOverItem === `project:${project.id}` && dragOverPosition === 'before',
+                'list-node--drop-after': dragOverItem === `project:${project.id}` && dragOverPosition === 'after',
+              }"
               draggable="true"
               @dragstart.stop="onDragStart($event, 'project', project.id)"
+              @dragend="onDragEnd"
+              @dragover.stop="onItemDragOver($event, 'project', project.id)"
+              @dragleave.stop="onItemDragLeave"
+              @drop.stop="onItemDrop($event, 'project', project.id, client.id)"
             >
               <div class="node-row">
                 <button
@@ -457,8 +576,16 @@ function loadPreviewData() {
                   v-for="task in tasksForProject(project.id)"
                   :key="task.id"
                   class="list-node list-node--task"
+                  :class="{
+                    'list-node--drop-before': dragOverItem === `task:${task.id}` && dragOverPosition === 'before',
+                    'list-node--drop-after': dragOverItem === `task:${task.id}` && dragOverPosition === 'after',
+                  }"
                   draggable="true"
                   @dragstart.stop="onDragStart($event, 'task', task.id)"
+                  @dragend="onDragEnd"
+                  @dragover.stop="onItemDragOver($event, 'task', task.id)"
+                  @dragleave.stop="onItemDragLeave"
+                  @drop.stop="onItemDrop($event, 'task', task.id, project.id)"
                 >
                   <div class="node-row">
                     <span class="node-slot" aria-hidden="true" />
@@ -476,6 +603,9 @@ function loadPreviewData() {
                     </span>
                     <span v-else class="node-label">{{ task.name }}</span>
                     <button class="edit-btn" @click="startEdit('task', task.id, task.name)">✎</button>
+                    <button class="delete-btn" title="Excluir tarefa" @click.stop="removeTask(task.id)">
+                      <span class="trash-icon" aria-hidden="true" />
+                    </button>
                   </div>
                 </div>
 
@@ -648,8 +778,16 @@ function loadPreviewData() {
           v-for="project in visibleProjects"
           :key="project.id"
           class="list-node"
+          :class="{
+            'list-node--drop-before': dragOverItem === `project:${project.id}` && dragOverPosition === 'before',
+            'list-node--drop-after': dragOverItem === `project:${project.id}` && dragOverPosition === 'after',
+          }"
           draggable="true"
           @dragstart="onDragStart($event, 'project', project.id)"
+          @dragend="onDragEnd"
+          @dragover="onItemDragOver($event, 'project', project.id)"
+          @dragleave="onItemDragLeave"
+          @drop="onItemDrop($event, 'project', project.id, focusedClient.id)"
         >
           <div class="node-row">
             <button
@@ -688,8 +826,16 @@ function loadPreviewData() {
               v-for="task in tasksForProject(project.id)"
               :key="task.id"
               class="list-node list-node--task"
+              :class="{
+                'list-node--drop-before': dragOverItem === `task:${task.id}` && dragOverPosition === 'before',
+                'list-node--drop-after': dragOverItem === `task:${task.id}` && dragOverPosition === 'after',
+              }"
               draggable="true"
               @dragstart.stop="onDragStart($event, 'task', task.id)"
+              @dragend="onDragEnd"
+              @dragover.stop="onItemDragOver($event, 'task', task.id)"
+              @dragleave.stop="onItemDragLeave"
+              @drop.stop="onItemDrop($event, 'task', task.id, project.id)"
             >
               <div class="node-row">
                 <span class="node-slot" aria-hidden="true" />
@@ -707,6 +853,9 @@ function loadPreviewData() {
                 </span>
                 <span v-else class="node-label">{{ task.name }}</span>
                 <button class="edit-btn" @click="startEdit('task', task.id, task.name)">✎</button>
+                <button class="delete-btn" title="Excluir tarefa" @click.stop="removeTask(task.id)">
+                  <span class="trash-icon" aria-hidden="true" />
+                </button>
               </div>
             </div>
 
@@ -823,8 +972,16 @@ function loadPreviewData() {
           v-for="task in visibleTasks"
           :key="task.id"
           class="list-node"
+          :class="{
+            'list-node--drop-before': dragOverItem === `task:${task.id}` && dragOverPosition === 'before',
+            'list-node--drop-after': dragOverItem === `task:${task.id}` && dragOverPosition === 'after',
+          }"
           draggable="true"
           @dragstart="onDragStart($event, 'task', task.id)"
+          @dragend="onDragEnd"
+          @dragover="onItemDragOver($event, 'task', task.id)"
+          @dragleave="onItemDragLeave"
+          @drop="onItemDrop($event, 'task', task.id, focusedProject.id)"
         >
           <div class="node-row">
             <span class="node-slot" aria-hidden="true" />
@@ -842,6 +999,9 @@ function loadPreviewData() {
             </span>
             <span v-else class="node-label">{{ task.name }}</span>
             <button class="edit-btn" @click="startEdit('task', task.id, task.name)">✎</button>
+            <button class="delete-btn" title="Excluir tarefa" @click.stop="removeTask(task.id)">
+              <span class="trash-icon" aria-hidden="true" />
+            </button>
           </div>
         </div>
 
@@ -969,7 +1129,29 @@ function loadPreviewData() {
 }
 
 .list-node {
+  position: relative;
   border-radius: var(--radius-block);
+}
+
+.list-node--drop-before::before,
+.list-node--drop-after::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--list-marker-size) + 11px);
+  right: 6px;
+  height: 2px;
+  background-color: var(--color-accent);
+  border-radius: 999px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.list-node--drop-before::before {
+  top: -1px;
+}
+
+.list-node--drop-after::after {
+  bottom: -1px;
 }
 
 .list-node--project {
@@ -994,7 +1176,8 @@ function loadPreviewData() {
   background-color: var(--color-surface);
 }
 
-.node-row:hover .edit-btn {
+.node-row:hover .edit-btn,
+.node-row:hover .delete-btn {
   opacity: 1;
 }
 
@@ -1073,7 +1256,8 @@ function loadPreviewData() {
   line-height: 1.2;
 }
 
-.edit-btn {
+.edit-btn,
+.delete-btn {
   background: none;
   border: none;
   font-size: 12px;
@@ -1088,6 +1272,50 @@ function loadPreviewData() {
 
 .edit-btn:hover {
   color: var(--color-text);
+}
+
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+}
+
+.delete-btn:hover {
+  color: var(--color-alert);
+}
+
+.trash-icon {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+}
+
+.trash-icon::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -2px;
+  width: 12px;
+  height: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.trash-icon::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 2px;
+  width: 4px;
+  height: 2px;
+  border: 1.5px solid currentColor;
+  border-bottom: none;
+  border-radius: 2px 2px 0 0;
 }
 
 /* ── Children ──────────────────────────────────────────────────────────────── */

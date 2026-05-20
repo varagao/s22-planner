@@ -25,7 +25,7 @@ export const isLoggedIn = () => pb.authStore.isValid
 // ── Client ───────────────────────────────────────────────────────────────────
 
 export const fetchClients = () =>
-  pb.collection('client').getFullList({ sort: 'name' })
+  pb.collection('client').getFullList({ sort: 'sort_order,name' })
 
 export const createClient = (data) =>
   pb.collection('client').create(data)
@@ -42,7 +42,7 @@ export const unarchiveClient = (id) =>
 // ── Project ──────────────────────────────────────────────────────────────────
 
 export const fetchProjects = (filter = '') =>
-  pb.collection('project').getFullList({ sort: 'name', expand: 'client', filter })
+  pb.collection('project').getFullList({ sort: 'sort_order,name', expand: 'client', filter })
 
 export const createProject = (data) =>
   pb.collection('project').create(data)
@@ -73,12 +73,12 @@ export const revokeViewerToken = (id) =>
 // ── Task ─────────────────────────────────────────────────────────────────────
 
 export const fetchTasks = (filter = '') =>
-  pb.collection('task').getFullList({ sort: 'name', expand: 'project,assignee', filter })
+  pb.collection('task').getFullList({ sort: 'sort_order,name', expand: 'project,assignee', filter })
 
 export const fetchTasksByProject = (projectId, token = null) =>
   pb.collection('task').getFullList({
     filter: `project="${projectId}" && status != "todo"`,
-    sort:   'due_date',
+    sort:   'sort_order,due_date',
     ...(token ? { query: { token } } : {}),
   })
 

@@ -67,6 +67,7 @@ async function handleSave() {
     const data = { ...form.value }
     if (!data.assignee) delete data.assignee
     if (!data.due_date) delete data.due_date
+    if (!editing.value) data.sort_order = nextTaskSortOrder(data.project)
     await taskStore.save(data, editing.value?.id ?? null)
     closeModal()
   } catch (e) {
@@ -78,22 +79,37 @@ async function handleSave() {
 
 async function handleDelete() {
   if (!editing.value) return
-  error.value = ''
   saving.value = true
   try {
-    const blocked = await hasTimeBlocks(editing.value.id)
-    if (blocked) {
-      error.value = 'Esta tarefa possui blocos de tempo alocados e não pode ser excluída.'
-      saving.value = false
-      return
-    }
-    await taskStore.remove(editing.value.id)
-    closeModal()
+    await deleteTaskRecord(editing.value.id)
+    if (!error.value) closeModal()
   } catch (e) {
     error.value = 'Erro ao excluir.'
   } finally {
     saving.value = false
   }
+}
+
+async function handleDeleteTask(task) {
+  error.value = ''
+  saving.value = true
+  try {
+    await deleteTaskRecord(task.id)
+  } catch (e) {
+    error.value = 'Erro ao excluir.'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function deleteTaskRecord(id) {
+  error.value = ''
+  const blocked = await hasTimeBlocks(id)
+  if (blocked) {
+    error.value = 'Esta tarefa possui blocos de tempo alocados e não pode ser excluída.'
+    return
+  }
+  await taskStore.remove(id)
 }
 
 function projectName(task) {
@@ -107,6 +123,12 @@ function projectColor(task) {
 function assigneeName(task) {
   const m = task.expand?.assignee
   return m ? (m.name || m.email) : '—'
+}
+
+function nextTaskSortOrder(projectId) {
+  return taskStore.tasks
+    .filter(task => task.project === projectId)
+    .reduce((value, task) => Math.max(value, task.sort_order || 0), 0) + 1
 }
 </script>
 
@@ -135,7 +157,12 @@ function assigneeName(task) {
         <span class="item-name">{{ task.name }}</span>
         <span class="item-assignee">{{ assigneeName(task) }}</span>
         <span class="badge" :class="task.status">{{ STATUS_LABELS[task.status] }}</span>
-        <span class="item-action">Editar</span>
+        <span class="item-actions">
+          <button class="icon-btn" title="Editar tarefa" @click.stop="openEdit(task)">✎</button>
+          <button class="icon-btn icon-btn--danger" title="Excluir tarefa" @click.stop="handleDeleteTask(task)">
+            <span class="trash-icon" aria-hidden="true" />
+          </button>
+        </span>
       </li>
     </ul>
   </div>
@@ -204,10 +231,12 @@ function assigneeName(task) {
         <button
           v-if="editing"
           type="button"
-          class="btn-danger"
+          class="btn-danger btn-danger--icon"
           :disabled="saving"
           @click="handleDelete"
+          title="Excluir tarefa"
         >
+          <span class="trash-icon" aria-hidden="true" />
           Excluir
         </button>
         <div class="form-actions-right">
@@ -282,9 +311,33 @@ function assigneeName(task) {
   min-width: 80px;
 }
 
-.item-action {
-  font-size: 12px;
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: none;
+  border: none;
+  border-radius: var(--radius-block);
   color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.icon-btn:hover {
+  color: var(--color-text);
+  background-color: color-mix(in srgb, var(--color-border) 60%, transparent);
+}
+
+.icon-btn--danger:hover {
+  color: var(--color-alert);
 }
 
 .badge {
@@ -415,8 +468,46 @@ select:focus {
   cursor: pointer;
 }
 
+.btn-danger--icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .btn-danger:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.trash-icon {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+}
+
+.trash-icon::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  left: -2px;
+  width: 12px;
+  height: 1.5px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.trash-icon::after {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 2px;
+  width: 4px;
+  height: 2px;
+  border: 1.5px solid currentColor;
+  border-bottom: none;
+  border-radius: 2px 2px 0 0;
 }
 </style>
